@@ -46,152 +46,67 @@
 
 namespace velodyne_driver
 {
-
-VelodyneDriver::VelodyneDriver(ros::NodeHandle node,
-                               ros::NodeHandle private_nh,
-                               std::string const & node_name)
-  : diagnostics_(node, private_nh, node_name)
+VelodyneDriver::VelodyneDriver(ros::NodeHandle node, const ros::NodeHandle& private_nh, std::string const& node_name)
 {
   // use private node handle to get parameters
-  private_nh.param("frame_id", config_.frame_id, std::string("velodyne"));
-  std::string tf_prefix = tf::getPrefixParam(private_nh);
-  ROS_DEBUG_STREAM("tf_prefix: " << tf_prefix);
-  config_.frame_id = tf::resolve(tf_prefix, config_.frame_id);
-
-  // get model name, validate string, determine packet rate
-  private_nh.param("model", config_.model, std::string("64E"));
-  double packet_rate;                   // packet frequency (Hz)
-  std::string model_full_name;
-  if ((config_.model == "VLS128") )
-  {
-    packet_rate = 6253.9;     //  3 firing cycles in a data packet. 3 x 53.3 μs = 0.1599 ms is the accumulation delay per packet.
-                            //   1 packet/0.1599 ms = 6253.9 packets/second
-
-    model_full_name = config_.model;
-  }
-  else if ((config_.model == "64E_S2") ||
-      (config_.model == "64E_S2.1"))    // generates 1333312 points per second
-    {                                   // 1 packet holds 384 points
-      packet_rate = 3472.17;            // 1333312 / 384
-      model_full_name = std::string("HDL-") + config_.model;
-    }
-  else if (config_.model == "64E")
-    {
-      packet_rate = 2600.0;
-      model_full_name = std::string("HDL-") + config_.model;
-    }
-  else if (config_.model == "64E_S3") // generates 2222220 points per second (half for strongest and half for lastest)
-    {                                 // 1 packet holds 384 points
-      packet_rate = 5787.03;          // 2222220 / 384
-      model_full_name = std::string("HDL-") + config_.model;
-    }
-  else if (config_.model == "32E")
-    {
-      packet_rate = 1808.0;
-      model_full_name = std::string("HDL-") + config_.model;
-    }
-    else if (config_.model == "32C")
-    {
-      packet_rate = 1507.0;
-      model_full_name = std::string("VLP-") + config_.model;
-    }
-  else if (config_.model == "VLP16")
-    {
-      packet_rate = 754;             // 754 Packets/Second for Last or Strongest mode 1508 for dual (VLP-16 User Manual)
-      model_full_name = "VLP-16";
-    }
-  else
-    {
-      ROS_ERROR_STREAM("unknown Velodyne LIDAR model: " << config_.model);
-      packet_rate = 2600.0;
-    }
-  std::string deviceName(std::string("Velodyne ") + model_full_name);
-
-  private_nh.param("rpm", config_.rpm, 600.0);
-  ROS_INFO_STREAM(deviceName << " rotating at " << config_.rpm << " RPM");
-  double frequency = (config_.rpm / 60.0);     // expected Hz rate
-
-  // default number of packets for each scan is a single revolution
-  // (fractions rounded up)
-  config_.npackets = (int) ceil(packet_rate / frequency);
-  private_nh.getParam("npackets", config_.npackets);
-  ROS_INFO_STREAM("publishing " << config_.npackets << " packets per scan");
-
-  // if we are timestamping based on the first or last packet in the scan
-  private_nh.param("timestamp_first_packet", config_.timestamp_first_packet, false);
-  if (config_.timestamp_first_packet)
-    ROS_INFO("Setting velodyne scan start time to timestamp of first packet");
-
-  std::string dump_file;
-  private_nh.param("pcap", dump_file, std::string(""));
-
+  std::string pcap_file, timestamp_method;
   double cut_angle;
-  private_nh.param("cut_angle", cut_angle, -0.01);
-  if (cut_angle < 0.0)
-  {
-    ROS_INFO_STREAM("Cut at specific angle feature deactivated.");
+  int udp_port;
+  private_nh.param("sensor_frame", config_.sensor_frame, std::string("velodyne"));
+  private_nh.param("timestamp_method", timestamp_method, std::string("end"));
+  private_nh.param("cut_angle", cut_angle, 0.);
+  private_nh.param("port", udp_port, (int)DATA_PORT_NUMBER);
+  private_nh.param("pcap", pcap_file, std::string(""));
+  // parse old parameters for compatibility (TODO: remove this line in a future release)
+  parse_deprecated_parameters(private_nh, cut_angle, timestamp_method);
+
+  // process, store & print parameters
+  if(timestamp_method == "end") {
+    config_.timestamp_method = SCAN_END;
+  } else if (timestamp_method == "start") {
+    config_.timestamp_method = SCAN_START;
+  } else if (timestamp_method == "middle") {
+    config_.timestamp_method = SCAN_MIDDLE;
+  } else {
+    ROS_ERROR("Invalid value for parameter 'timestamp_method'. Should be one of 'end', 'start', or 'middle'.");
+    config_.timestamp_method = SCAN_END;
   }
-  else if (cut_angle < (2*M_PI))
+  ROS_INFO("Setting timestamp of velodyne scan to: %s of scan", timestamp_method.c_str());
+  if (cut_angle >= 0.0 && cut_angle < (2 * M_PI))
   {
-      ROS_INFO_STREAM("Cut at specific angle feature activated. " 
-        "Cutting velodyne points always at " << cut_angle << " rad.");
+    ROS_INFO_STREAM("Cutting velodyne points at " << cut_angle << " rad.");
   }
   else
   {
-    ROS_ERROR_STREAM("cut_angle parameter is out of range. Allowed range is "
-    << "between 0.0 and 2*PI or negative values to deactivate this feature.");
-    cut_angle = -0.01;
+    ROS_ERROR_STREAM("'cut_angle' parameter is out of range. Allowed range is between 0.0 and 2*PI.");
+    cut_angle = 0;
   }
-
-  // Convert cut_angle from radian to one-hundredth degree, 
+  // Convert cut_angle from radian to one-hundredth degree,
   // which is used in velodyne packets
-  config_.cut_angle = int((cut_angle*360/(2*M_PI))*100);
-
-  int udp_port;
-  private_nh.param("port", udp_port, (int) DATA_PORT_NUMBER);
+  config_.cut_angle = int((cut_angle * 360 / (2 * M_PI)) * 100);
 
   // Initialize dynamic reconfigure
-  srv_ = boost::make_shared <dynamic_reconfigure::Server<velodyne_driver::
-    VelodyneNodeConfig> > (private_nh);
-  dynamic_reconfigure::Server<velodyne_driver::VelodyneNodeConfig>::
-    CallbackType f;
-  f = boost::bind (&VelodyneDriver::callback, this, _1, _2);
-  srv_->setCallback (f); // Set callback function und call initially
-
-  // initialize diagnostics
-  diagnostics_.setHardwareID(deviceName);
-  const double diag_freq = packet_rate/config_.npackets;
-  diag_max_freq_ = diag_freq;
-  diag_min_freq_ = diag_freq;
-  ROS_INFO("expected frequency: %.3f (Hz)", diag_freq);
-
-  using namespace diagnostic_updater;
-  diag_topic_.reset(new TopicDiagnostic("velodyne_packets", diagnostics_,
-                                        FrequencyStatusParam(&diag_min_freq_,
-                                                             &diag_max_freq_,
-                                                             0.1, 10),
-                                        TimeStampStatusParam()));
-  diag_timer_ = private_nh.createTimer(ros::Duration(0.2), &VelodyneDriver::diagTimerCallback,this);
+  srv_ = std::make_shared<dynamic_reconfigure::Server<velodyne_driver::VelodyneNodeConfig> >(private_nh);
+  srv_->setCallback([this](velodyne_driver::VelodyneNodeConfig& config, uint32_t level) { callback(config, level); });
 
   config_.enabled = true;
 
   // open Velodyne input device or file
-  if (dump_file != "")                  // have PCAP file?
-    {
-      // read data from packet capture file
-      input_.reset(new velodyne_driver::InputPCAP(private_nh, udp_port,
-                                                  packet_rate, dump_file));
-    }
+  if (!pcap_file.empty())  // have PCAP file?
+  {
+    // read data from packet capture file
+    input_.reset(new velodyne_driver::InputPCAP(private_nh, udp_port, pcap_file));
+  }
   else
-    {
-      // read data from live socket
-      input_.reset(new velodyne_driver::InputSocket(private_nh, udp_port));
-    }
+  {
+    // read data from live socket
+    input_.reset(new velodyne_driver::InputSocket(private_nh, udp_port));
+  }
 
   // raw packet output topic
-  output_ =
-    node.advertise<velodyne_msgs::VelodyneScan>("velodyne_packets", 10);
+  output_ = node.advertise<velodyne_msgs::VelodyneScan>("velodyne_packets", 10);
 
+  // specify invalid last azimuth
   last_azimuth_ = -1;
 }
 
@@ -199,9 +114,10 @@ VelodyneDriver::VelodyneDriver(ros::NodeHandle node,
  *
  *  @returns true unless end of file reached
  */
-bool VelodyneDriver::poll(void)
+bool VelodyneDriver::poll()
 {
-  if (!config_.enabled) {
+  if (!config_.enabled)
+  {
     // If we are not enabled exit once a second to let the caller handle
     // anything it might need to, such as if it needs to exit.
     ros::Duration(1).sleep();
@@ -211,77 +127,95 @@ bool VelodyneDriver::poll(void)
   // Allocate a new shared pointer for zero-copy sharing with other nodelets.
   velodyne_msgs::VelodyneScanPtr scan(new velodyne_msgs::VelodyneScan);
 
-  if( config_.cut_angle >= 0) //Cut at specific angle feature enabled
+  // make memory allocation more efficient by initializing with proper amount of memory
+  if (config_.max_packets > 0)
+    scan->packets.resize(config_.max_packets);
+  else
+    scan->packets.resize(512); // some initial guess about max_packets
+
+  // read UDP packets
+  size_t cur_packet_idx = 0;
+  while (true)
   {
-    scan->packets.reserve(config_.npackets);
-    velodyne_msgs::VelodynePacket tmp_packet;
-    while(true)
+    // check if current size is to small (after one/few rotations this will not happen any more because we properly
+    // resized with max_packets above)
+    if (cur_packet_idx >= scan->packets.size())
     {
-      while(true)
-      {
-        int rc = input_->getPacket(&tmp_packet, config_.time_offset);
-        if (rc == 0) break;       // got a full packet?
-        if (rc < 0) return false; // end of file reached?
-      }
-      scan->packets.push_back(tmp_packet);
+      scan->packets.resize(scan->packets.size() * 2);
+    }
 
-      // Extract base rotation of first block in packet
-      std::size_t azimuth_data_pos = 100*0+2;
-      int azimuth = *( (u_int16_t*) (&tmp_packet.data[azimuth_data_pos]));
+    // read single packet
+    while (true)
+    {
+      int rc = input_->getPacket(&scan->packets[cur_packet_idx], config_.time_offset);
+      if (rc == 0)
+        break;  // got a full packet?
+      if (rc < 0)
+        return false;  // end of file reached?
+    }
 
-      //if first packet in scan, there is no "valid" last_azimuth_
-      if (last_azimuth_ == -1) {
-      	 last_azimuth_ = azimuth;
-      	 continue;
-      }
-      if((last_azimuth_ < config_.cut_angle && config_.cut_angle <= azimuth)
-      	 || ( config_.cut_angle <= azimuth && azimuth < last_azimuth_)
-      	 || (azimuth < last_azimuth_ && last_azimuth_ < config_.cut_angle))
-      {
-        last_azimuth_ = azimuth;
-        break; // Cut angle passed, one full revolution collected
-      }
-      last_azimuth_ = azimuth;
+    // Extract base rotation of first block in packet
+    std::size_t azimuth_data_pos = 100 * 0 + 2;
+    int cur_azimuth = *((u_int16_t*)(&scan->packets[cur_packet_idx].data[azimuth_data_pos]));
+
+    cur_packet_idx++;
+
+    if (passedCutAngle(cur_azimuth))
+    {
+      scan->packets.resize(cur_packet_idx); // shrink size (only necessary in initialization phase)
+      break;
     }
   }
-  else // standard behaviour
-  {
-  // Since the velodyne delivers data at a very high rate, keep
-  // reading and publishing scans as fast as possible.
-    scan->packets.resize(config_.npackets);
-    for (int i = 0; i < config_.npackets; ++i)
-    {
-      while (true)
-        {
-          // keep reading until full packet received
-          int rc = input_->getPacket(&scan->packets[i], config_.time_offset);
-          if (rc == 0) break;       // got a full packet?
-          if (rc < 0) return false; // end of file reached?
-        }
-    }
-  }
+
+  // keep track of the maximum number of packets seen so far
+  config_.max_packets = std::max(config_.max_packets, scan->packets.size());
 
   // publish message using time of last packet read
   ROS_DEBUG("Publishing a full Velodyne scan.");
-  if (config_.timestamp_first_packet){
+  if (config_.timestamp_method == SCAN_START)
+  {
     scan->header.stamp = scan->packets.front().stamp;
   }
-  else{
+  else if (config_.timestamp_method == SCAN_END)
+  {
     scan->header.stamp = scan->packets.back().stamp;
   }
-  scan->header.frame_id = config_.frame_id;
+  else if (config_.timestamp_method == SCAN_MIDDLE)
+  {
+    auto start = scan->packets.front().stamp;
+    auto end = scan->packets.back().stamp;
+    scan->header.stamp = start + (end - start) * 0.5;
+  }
+  scan->header.frame_id = config_.sensor_frame;
   output_.publish(scan);
-
-  // notify diagnostics that a message has been published, updating
-  // its status
-  diag_topic_->tick(scan->header.stamp);
-  diagnostics_.update();
 
   return true;
 }
 
-void VelodyneDriver::callback(velodyne_driver::VelodyneNodeConfig &config,
-              uint32_t level)
+bool VelodyneDriver::passedCutAngle(int cur_azimuth)
+{
+  // if first packet in scan, there is no "valid" last_azimuth_
+  if (last_azimuth_ == -1)
+  {
+    last_azimuth_ = cur_azimuth;
+    return false;
+  }
+
+  // check if velodyne passed 360 degree
+  bool new_revolution = cur_azimuth < last_azimuth_;
+
+  // check if cut angle was passed. Including corner cases where the cut angle is close to 0/360 degree.
+  bool passed_cut_angle = (last_azimuth_ < config_.cut_angle && cur_azimuth >= config_.cut_angle) ||
+                          (new_revolution && cur_azimuth >= config_.cut_angle) ||  // if cut_angle = 0 + small_epsilon
+                          (new_revolution && last_azimuth_ < config_.cut_angle);   // if cut_angle = 360 - small_epsilon
+
+  // store current azimuth for next iteration
+  last_azimuth_ = cur_azimuth;
+
+  return passed_cut_angle;
+}
+
+void VelodyneDriver::callback(velodyne_driver::VelodyneNodeConfig& config, uint32_t level)
 {
   ROS_INFO("Reconfigure Request");
   if (level & 1)
@@ -294,11 +228,76 @@ void VelodyneDriver::callback(velodyne_driver::VelodyneNodeConfig &config,
   }
 }
 
-void VelodyneDriver::diagTimerCallback(const ros::TimerEvent &event)
+void VelodyneDriver::parse_deprecated_parameters(const ros::NodeHandle& private_nh, double& cut_angle,
+                                                 std::string& timestamp_method)
 {
-  (void)event;
-  // Call necessary to provide an error when no velodyne packets are received
-  diagnostics_.update();
+  // This method is designed in a way that it can be removed without breaking the new code (using the new parameters).
+
+  std::string frame_id;
+  if (private_nh.getParam("frame_id", frame_id))
+  {
+    ROS_WARN("Deprecation: parameter 'frame_id' was replaced by 'sensor_frame' to emphasize that it is the frame id of "
+             "the sensor, i.e. the origin of the point cloud. Please update your launch files since this "
+             "compatibility code will be removed in a future release.");
+    config_.sensor_frame = frame_id;
+  }
+
+  if (cut_angle < 0)
+  {
+    ROS_WARN("Deprecation: the 'cut_angle' is now always enabled in order to simplify configuration and to make the "
+             "driver more robust. Therefore negative cut_angles are no more valid. Please update your launch files "
+             "since this compatibility code will be removed in a future release (cut_angle is set to zero).");
+    cut_angle = 0;
+  }
+
+  bool timestamp_first_packet;
+  if (private_nh.getParam("timestamp_first_packet", timestamp_first_packet))
+  {
+    ROS_WARN("Deprecation: parameter 'timestamp_first_packet' was replaced by 'timestamp_method' because it also "
+             "allows to specify the middle of a scan (typically the most accurate approximation). Possible vales for "
+             "'timestamp_method' are 'end', 'start', 'middle'. Please update your launch files since this "
+             "compatibility code will be removed in a future release.");
+    timestamp_method = timestamp_first_packet ? "start" : "end";
+  }
+
+  if (private_nh.getParam("rpm", timestamp_first_packet))
+  {
+    ROS_WARN("Deprecation: parameter 'rpm' is no more required because individual scans are separated based on given "
+             "'cut_angle' and the current packet's azimuth angle. Please remove this parameter from your launch files "
+             "as it has no effect any more.");
+  }
+
+  std::string model;
+  if (private_nh.getParam("model", model))
+  {
+    ROS_WARN("Deprecation: parameter 'model' is no more required because individual scans are separated based on given "
+             "'cut_angle' and the current packet's azimuth angle. However it is required if you want to play pcap "
+             "files in order to calculate the appropriate packet rate (used to simulate inter packet delay). So it was "
+             "renamed from 'model' to 'pcap_velodyne_model' to emphasize that this parameter is only required for "
+             "replaying pcap files. Please update your launch files since this compatibility code will be removed in a "
+             "future release.");  // compatibility code is located in input.cc
+  }
+  bool read_once;
+  if (private_nh.getParam("read_once", read_once))
+  {
+    ROS_WARN("Deprecation: parameter 'read_once' was renamed to 'pcap_read_once' in order to emphasize that is only "
+             "required for replaying pcap files. Please update your launch files since this compatibility code will be "
+             "removed in a future release.");  // compatibility code is located in input.cc
+  }
+  bool read_fast;
+  if (private_nh.getParam("read_fast", read_fast))
+  {
+    ROS_WARN("Deprecation: parameter 'read_fast' was renamed to 'pcap_read_fast' in order to emphasize that is only "
+             "required for replaying pcap files. Please update your launch files since this compatibility code will be "
+             "removed in a future release.");  // compatibility code is located in input.cc
+  }
+  double repeat_delay;
+  if (private_nh.getParam("repeat_delay", repeat_delay))
+  {
+    ROS_WARN("Deprecation: parameter 'repeat_delay' was renamed to 'pcap_repeat_delay' in order to emphasize that is "
+             "only required for replaying pcap files. Please update your launch files since this compatibility code "
+             "will be removed in a future release.");  // compatibility code is located in input.cc
+  }
 }
 
-} // namespace velodyne_driver
+}  // namespace velodyne_driver

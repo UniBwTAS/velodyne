@@ -49,47 +49,45 @@ class VelodyneDriver
 {
 public:
   VelodyneDriver(ros::NodeHandle node,
-                 ros::NodeHandle private_nh,
+                 const ros::NodeHandle& private_nh,
                  std::string const & node_name = ros::this_node::getName());
-  ~VelodyneDriver() {}
+  ~VelodyneDriver() = default;
 
-  bool poll(void);
+  bool poll();
 
 private:
   // Callback for dynamic reconfigure
-  void callback(velodyne_driver::VelodyneNodeConfig &config,
-              uint32_t level);
-  // Callback for diagnostics update for lost communication with vlp
-  void diagTimerCallback(const ros::TimerEvent&event);
+  void callback(velodyne_driver::VelodyneNodeConfig &config, uint32_t level);
+
+  // Check if velodyne has passed specified cut angle
+  inline bool passedCutAngle(int cur_azimuth);
+
+  void parse_deprecated_parameters(const ros::NodeHandle& private_nh, double& cut_angle, std::string& timestamp_method);
 
   // Pointer to dynamic reconfigure service srv_
-  boost::shared_ptr<dynamic_reconfigure::Server<velodyne_driver::
-              VelodyneNodeConfig> > srv_;
+  std::shared_ptr<dynamic_reconfigure::Server<velodyne_driver::VelodyneNodeConfig> > srv_;
+
+  enum TIMESTAMP_METHOD
+  {
+    SCAN_END = 0,
+    SCAN_START,
+    SCAN_MIDDLE
+  };
 
   // configuration parameters
   struct
   {
-    std::string frame_id;            // tf frame ID
-    std::string model;               // device model name
-    int    npackets;                 // number of packets to collect
-    double rpm;                      // device rotation rate (RPMs)
-    int cut_angle;                   // cutting angle in 1/100°
-    double time_offset;              // time in seconds added to each velodyne time stamp
-    bool enabled;                    // polling is enabled
-    bool timestamp_first_packet;
-  }
-  config_;
+    std::string sensor_frame;           // tf frame ID of the velodyne sensor (origin of the point cloud)
+    int cut_angle;                      // cutting angle in 1/100°
+    double time_offset;                 // time in seconds added to each velodyne time stamp
+    bool enabled;                       // polling is enabled
+    TIMESTAMP_METHOD timestamp_method;  // which timestamp to use for a whole scan (end, start, middle of scan)
+    std::size_t max_packets{ 0 };       // maximum number of packets within a revolution seen so far
+  } config_;
 
-  boost::shared_ptr<Input> input_;
+  std::shared_ptr<Input> input_;
   ros::Publisher output_;
   int last_azimuth_;
-
-  /* diagnostics updater */
-  ros::Timer diag_timer_;
-  diagnostic_updater::Updater diagnostics_;
-  double diag_min_freq_;
-  double diag_max_freq_;
-  boost::shared_ptr<diagnostic_updater::TopicDiagnostic> diag_topic_;
 };
 
 }  // namespace velodyne_driver

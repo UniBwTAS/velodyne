@@ -94,10 +94,10 @@ namespace velodyne_driver
     Input(private_nh, port)
   {
     sockfd_ = -1;
-    
+
     if (!devip_str_.empty()) {
       inet_aton(devip_str_.c_str(),&devip_);
-    }    
+    }
 
     // connect to Velodyne UDP port
     ROS_INFO_STREAM("Opening UDP socket: port " << port);
@@ -107,19 +107,19 @@ namespace velodyne_driver
         perror("socket");               // TODO: ROS_ERROR errno
         return;
       }
-  
+
     sockaddr_in my_addr;                     // my address information
     memset(&my_addr, 0, sizeof(my_addr));    // initialize to zeros
     my_addr.sin_family = AF_INET;            // host byte order
     my_addr.sin_port = htons(port);          // port in network byte order
     my_addr.sin_addr.s_addr = INADDR_ANY;    // automatically fill in my IP
-  
+
     if (bind(sockfd_, (sockaddr *)&my_addr, sizeof(sockaddr)) == -1)
       {
         perror("bind");                 // TODO: ROS_ERROR errno
         return;
       }
-  
+
     if (fcntl(sockfd_,F_SETFL, O_NONBLOCK|FASYNC) < 0)
       {
         perror("non-block");
@@ -245,31 +245,34 @@ namespace velodyne_driver
    *
    *  @param private_nh ROS private handle for calling node.
    *  @param port UDP port number
-   *  @param packet_rate expected device packet frequency (Hz)
    *  @param filename PCAP dump file name
    */
-  InputPCAP::InputPCAP(ros::NodeHandle private_nh, uint16_t port,
-                       double packet_rate, std::string filename,
-                       bool read_once, bool read_fast, double repeat_delay):
-    Input(private_nh, port),
-    packet_rate_(packet_rate),
+  InputPCAP::InputPCAP(ros::NodeHandle private_nh, uint16_t port, std::string filename, bool read_once, bool read_fast,
+                       double repeat_delay)
+    : Input(private_nh, port),
+    packet_rate_(1),
     filename_(filename)
   {
-    pcap_ = NULL;  
+    pcap_ = nullptr;
     empty_ = true;
 
     // get parameters using private node handle
-    private_nh.param("read_once", read_once_, false);
-    private_nh.param("read_fast", read_fast_, false);
-    private_nh.param("repeat_delay", repeat_delay_, 0.0);
+    private_nh.param("pcap_velodyne_model", velodyne_model_, std::string("64E"));
+    private_nh.param("pcap_read_once", read_once_, false);
+    private_nh.param("pcap_read_fast", read_fast_, false);
+    private_nh.param("pcap_repeat_delay", repeat_delay_, 0.0);
+    // parse old parameters for compatibility (TODO: remove this line in a future release)
+    parse_deprecated_parameters(private_nh);
+
+    // get packet rate in order to play pcap file in real speed (if read_fast_ is false)
+    packet_rate_ = obtainPacketRate();
 
     if (read_once_)
       ROS_INFO("Read input file only once.");
     if (read_fast_)
       ROS_INFO("Read input file as quickly as possible.");
     if (repeat_delay_ > 0.0)
-      ROS_INFO("Delay %.3f seconds before repeating input file.",
-               repeat_delay_);
+      ROS_INFO("Delay %.3f seconds before repeating input file.", repeat_delay_);
 
     // Open the PCAP dump file
     ROS_INFO("Opening PCAP file \"%s\"", filename_.c_str());
@@ -313,9 +316,9 @@ namespace velodyne_driver
               continue;
 
             // Keep the reader from blowing through the file.
-            if (read_fast_ == false)
+            if (!read_fast_)
               packet_rate_.sleep();
-            
+
             memcpy(&pkt->data[0], pkt_data+42, packet_size);
             pkt->stamp = ros::Time::now(); // time_offset not considered here, as no synchronization required
             empty_ = false;
@@ -324,7 +327,7 @@ namespace velodyne_driver
 
         if (empty_)                 // no data in file?
           {
-            ROS_WARN("Error %d reading Velodyne packet: %s", 
+            ROS_WARN("Error %d reading Velodyne packet: %s",
                      res, pcap_geterr(pcap_));
             return -1;
           }
@@ -334,7 +337,7 @@ namespace velodyne_driver
             ROS_INFO("end of file reached -- done reading.");
             return -1;
           }
-        
+
         if (repeat_delay_ > 0.0)
           {
             ROS_INFO("end of file reached -- delaying %.3f seconds.",
@@ -353,4 +356,67 @@ namespace velodyne_driver
       } // loop back and try again
   }
 
-} // velodyne namespace
+  double InputPCAP::obtainPacketRate()
+  {
+    auto model = velodyne_model_;
+
+    if ((model == "VLS128"))  //  3 firing cycles in a data packet. 3 x 53.3 μs = 0.1599 ms is the accumulation delay
+                              //  per packet. 1 packet/0.1599 ms = 6253.9 packets/second
+    {
+      return 6253.9;
+    }
+    else if ((model == "64E_S2") || (model == "64E_S2.1"))  // generates 1333312 points per second
+    {                                                       // 1 packet holds 384 points
+      return 3472.17;                                       // 1333312 / 384
+    }
+    else if (model == "64E")
+    {
+      return 2600.0;
+    }
+    else if (model == "64E_S3")  // generates 2222220 points per second (half for strongest and half for lastest)
+    {                            // 1 packet holds 384 points
+      return 5787.03;            // 2222220 / 384
+    }
+    else if (model == "32E")
+    {
+      return 1808.0;
+    }
+    else if (model == "32C")
+    {
+      return 1507.0;
+    }
+    else if (model == "VLP16")
+    {
+      return 754;  // 754 Packets/Second for Last or Strongest mode 1508 for dual (VLP-16 User Manual)
+    }
+    else
+    {
+      ROS_ERROR_STREAM("unknown Velodyne LIDAR model: " << model);
+      return 2600.0;
+    }
+  }
+
+  void InputPCAP::parse_deprecated_parameters(const ros::NodeHandle& private_nh)
+  {
+    // This method is designed in a way that it can be removed without breaking the new code (using the new parameters).
+
+    // deprecation warnings were already printed in driver.cc so here we silently use the deprecated parameters.
+    std::string model;
+    if(private_nh.getParam("model", model)) {
+      velodyne_model_ = model;
+    }
+    bool read_once;
+    if(private_nh.getParam("read_once", read_once)) {
+      read_once_ = read_once;
+    }
+    bool read_fast;
+    if(private_nh.getParam("read_fast", read_fast)) {
+      read_fast_ = read_fast;
+    }
+    double repeat_delay;
+    if(private_nh.getParam("repeat_delay", repeat_delay)) {
+      repeat_delay_ = repeat_delay;
+    }
+  }
+
+  }  // namespace velodyne_driver

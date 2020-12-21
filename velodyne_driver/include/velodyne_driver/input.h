@@ -121,7 +121,6 @@ class InputPCAP: public Input
 public:
   InputPCAP(ros::NodeHandle private_nh,
             uint16_t port = DATA_PORT_NUMBER,
-            double packet_rate = 0.0,
             std::string filename = "",
             bool read_once = false,
             bool read_fast = false,
@@ -131,6 +130,10 @@ public:
   virtual int getPacket(velodyne_msgs::VelodynePacket *pkt,
                         const double time_offset);
   void setDeviceIP(const std::string& ip);
+
+  double obtainPacketRate();
+
+  void parse_deprecated_parameters(const ros::NodeHandle& private_nh);
 
 private:
   ros::Rate packet_rate_;
@@ -142,6 +145,7 @@ private:
   bool read_once_;
   bool read_fast_;
   double repeat_delay_;
+  std::string velodyne_model_;
 };
 
 }  // namespace velodyne_driver
