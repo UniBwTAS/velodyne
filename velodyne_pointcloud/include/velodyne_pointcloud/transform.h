@@ -92,6 +92,7 @@ private:
   /// configuration parameters
   typedef struct
   {
+    std::string sensor_frame;  ///< sensor frame
     std::string target_frame;  ///< target frame
     std::string fixed_frame;   ///< fixed frame
     std::string cloud_type;    ///< selects the type of point cloud to use as output

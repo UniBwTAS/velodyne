@@ -83,8 +83,10 @@ namespace velodyne_pointcloud
     ROS_INFO_STREAM("Reconfigure request.");
     data_->setParameters(config.min_range, config.max_range,
                          config.view_direction, config.view_width);
+    config_.sensor_frame = config.sensor_frame;
     config_.target_frame = config.target_frame;
     config_.fixed_frame = config.fixed_frame;
+    ROS_INFO_STREAM("Sensor frame ID now: " << config_.sensor_frame);
     ROS_INFO_STREAM("Target frame ID now: " << config_.target_frame);
     ROS_INFO_STREAM("Fixed frame ID now: " << config_.fixed_frame);
     config_.min_range = config.min_range;
@@ -214,22 +216,19 @@ namespace velodyne_pointcloud
         for(ethernet_msgs::PacketConstPtr& msg: *vec_ethernet_msgs)
         {
             velodyne_msgs::VelodynePacket tmp_packet;
-            std::memcpy( &tmp_packet.data, &msg->payload[ 0 ], 1206 );
+            std::memcpy( &tmp_packet.data, &msg->payload[ 0 ], msg->payload.size() );
             tmp_packet.stamp = ethernet_msg->header.stamp;
             scan->packets.push_back(tmp_packet);
         }
 
-        if(vec_ethernet_msgs->size() > 0)
+        if(!vec_ethernet_msgs->empty())
         {
-            scan->header = vec_ethernet_msgs->at(0)->header;
-            if(scan->header.frame_id == "")
-            {
-                scan->header.frame_id = config_.target_frame;
-            }
-        }
+            scan->header.stamp = vec_ethernet_msgs->at(0)->header.stamp;
+            scan->header.frame_id = config_.sensor_frame;
 
-        // publish the pointcloud2
-        processScan(scan);
+          // publish the pointcloud2
+          processScan(scan);
+        }
 
         // delete the buffer
         vec_ethernet_msgs->clear();
