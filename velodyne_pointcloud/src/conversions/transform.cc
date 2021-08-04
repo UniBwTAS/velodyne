@@ -223,7 +223,10 @@ namespace velodyne_pointcloud
 
         if(!vec_ethernet_msgs->empty())
         {
-            scan->header.stamp = vec_ethernet_msgs->at(0)->header.stamp;
+            ros::Time scan_start = vec_ethernet_msgs->front()->header.stamp;
+            ros::Time scan_end = vec_ethernet_msgs->back()->header.stamp;
+
+            scan->header.stamp = scan_start + (scan_end - scan_start) * 0.5;
             scan->header.frame_id = config_.sensor_frame;
 
           // publish the pointcloud2
