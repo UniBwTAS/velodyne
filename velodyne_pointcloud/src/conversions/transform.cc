@@ -182,7 +182,11 @@ namespace velodyne_pointcloud
                     scanMsg->header.stamp, i);
     }
     // publish the accumulated cloud message
-    output_.publish(container_ptr->finishCloud());
+    ros::Time stamp;
+    ros::Time start = scanMsg->packets.front().stamp;
+    ros::Time end = scanMsg->packets.back().stamp;
+    stamp = start + (end - start) * 0.5;
+    output_.publish(container_ptr->finishCloud(stamp));
 
     diag_topic_->tick(scanMsg->header.stamp);
     diagnostics_.update();
@@ -223,10 +227,7 @@ namespace velodyne_pointcloud
 
         if(!vec_ethernet_msgs->empty())
         {
-            ros::Time scan_start = vec_ethernet_msgs->front()->header.stamp;
-            ros::Time scan_end = vec_ethernet_msgs->back()->header.stamp;
-
-            scan->header.stamp = scan_start + (scan_end - scan_start) * 0.5;
+            scan->header.stamp = vec_ethernet_msgs->front()->header.stamp;
             scan->header.frame_id = config_.sensor_frame;
 
           // publish the pointcloud2

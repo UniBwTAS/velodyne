@@ -129,7 +129,7 @@ public:
 
   virtual void newLine() = 0;
 
-  const sensor_msgs::PointCloud2& finishCloud()
+  const sensor_msgs::PointCloud2& finishCloud(ros::Time stamp)
   {
     cloud.data.resize(cloud.point_step * cloud.width * cloud.height);
 
@@ -145,6 +145,7 @@ public:
     {
       cloud.header.frame_id = sensor_frame;
     }
+    cloud.header.stamp = stamp;
 
     ROS_DEBUG_STREAM("Prepared cloud width" << cloud.height * cloud.width
                                             << " Velodyne points, time: " << cloud.header.stamp);
