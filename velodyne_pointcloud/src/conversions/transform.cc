@@ -217,7 +217,7 @@ namespace velodyne_pointcloud
         {
             velodyne_msgs::VelodynePacket tmp_packet;
             std::memcpy( &tmp_packet.data, &msg->payload[ 0 ], msg->payload.size() );
-            tmp_packet.stamp = ethernet_msg->header.stamp;
+            tmp_packet.stamp = msg->header.stamp;
             scan->packets.push_back(tmp_packet);
         }
 
