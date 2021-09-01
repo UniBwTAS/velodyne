@@ -119,6 +119,10 @@ namespace velodyne_pointcloud
         else
         {
           if(config_.cloud_type == EXTENDED_TYPE) {
+            if(config_.num_lasers != 128)
+            {
+              ROS_ERROR_STREAM("Using the Extended cloud format with wrong model, only VLS128!");
+            }
             ROS_INFO_STREAM("Using the Extended cloud format...");
             container_ptr =
                 boost::shared_ptr<PointcloudExtended>(new PointcloudExtended(
