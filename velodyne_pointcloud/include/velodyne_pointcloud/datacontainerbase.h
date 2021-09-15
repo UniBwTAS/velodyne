@@ -110,7 +110,7 @@ public:
     cloud.width = config_.init_width;
     cloud.height = config_.init_height;
     cloud.is_dense = static_cast<uint8_t>(config_.is_dense);
-
+    disable_transforms = false;
   }
 
 
@@ -133,7 +133,11 @@ public:
   {
     cloud.data.resize(cloud.point_step * cloud.width * cloud.height);
 
-    if (!config_.target_frame.empty())
+    if(disable_transforms)
+    {
+      cloud.header.frame_id = sensor_frame;
+    }
+    else if (!config_.target_frame.empty())
     {
       cloud.header.frame_id = config_.target_frame;
     }
@@ -209,16 +213,16 @@ public:
     geometry_msgs::TransformStamped msg;
     try
     {
-      msg = tf_buffer->lookupTransform(target_frame, source_frame, time, ros::Duration(0.2));
+      msg = tf_buffer->lookupTransform(target_frame, source_frame, time, ros::Duration(0.08));
     }
     catch (tf2::LookupException& e)
     {
-      ROS_ERROR("%s", e.what());
+      ROS_ERROR_THROTTLE(3, "%s", e.what());
       return false;
     }
     catch (tf2::ExtrapolationException& e)
     {
-      ROS_ERROR("%s", e.what());
+      ROS_ERROR_THROTTLE(3, "%s", e.what());
       return false;
     }
 
@@ -234,7 +238,7 @@ public:
 
   inline bool computeTransformToTarget(const ros::Time &scan_time)
   {
-    if (config_.target_frame.empty())
+    if (config_.target_frame.empty() || disable_transforms)
     {
       // no need to calculate transform -> success
       return true;
@@ -245,7 +249,7 @@ public:
 
   inline bool computeTransformToFixed(const ros::Time &packet_time)
   {
-    if (config_.fixed_frame.empty())
+    if (config_.fixed_frame.empty() || disable_transforms)
     {
       // no need to calculate transform -> success
       return true;
@@ -257,17 +261,24 @@ public:
   inline void transformPoint(float& x, float& y, float& z)
   {
     Eigen::Vector3f p = Eigen::Vector3f(x, y, z);
-    if (!config_.fixed_frame.empty())
-    {
-      p = tf_matrix_to_fixed * p;
-    }
-    if (!config_.target_frame.empty())
-    {
-      p = tf_matrix_to_target * p;
+    if(!disable_transforms) {
+      if (!config_.fixed_frame.empty())
+      {
+        p = tf_matrix_to_fixed * p;
+      }
+      if (!config_.target_frame.empty())
+      {
+        p = tf_matrix_to_target * p;
+      }
     }
     x = p.x();
     y = p.y();
     z = p.z();
+  }
+
+  inline void disableTransforms()
+  {
+    disable_transforms = true;
   }
 
   inline bool pointInRange(const float range) const
@@ -287,6 +298,7 @@ protected:
   std::shared_ptr<tf2_ros::Buffer> tf_buffer;
   Eigen::Affine3f tf_matrix_to_fixed;
   Eigen::Affine3f tf_matrix_to_target;
+  bool disable_transforms;
   std::string sensor_frame;
   size_t  packets_in_scan{0};
 };

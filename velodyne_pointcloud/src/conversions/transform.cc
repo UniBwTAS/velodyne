@@ -164,11 +164,15 @@ namespace velodyne_pointcloud
     // allocate a point cloud with same time and frame ID as raw data
     container_ptr->setup(scanMsg);
 
-    // sufficient to calculate single transform for whole scan
-    if(!container_ptr->computeTransformToTarget(scanMsg->header.stamp))
+    // wait until transform of last packet is available
+    if(!container_ptr->computeTransformToTarget(scanMsg->packets.back().stamp) ||
+        !container_ptr->computeTransformToFixed(scanMsg->packets.back().stamp))
     {
-      // target frame not available
-      return;
+      ROS_WARN_THROTTLE(
+          3, "Target frame or fixed frame not available. Unable to perform ego "
+             "motion correction and target transform for this scan. Caution: "
+             "frequency of this warning is throttled to 0.33 Hz!");
+      container_ptr->disableTransforms();
     }
 
     // process each packet provided by the driver
