@@ -88,6 +88,7 @@ private:
   ros::Subscriber velodyne_scan_;
   ros::Subscriber velodyne_ethernet_msgs_;
   ros::Publisher output_;
+  uint16_t scan_first_azimuth{0};
 
   /// configuration parameters
   typedef struct
@@ -114,6 +115,12 @@ private:
   double diag_max_freq_;
   boost::shared_ptr<diagnostic_updater::TopicDiagnostic> diag_topic_;
   boost::mutex reconfigure_mtx_;
+
+  int _npackets;
+  int _cut_angle;
+  int _last_azimuth{-1};
+  bool _first_rotation{true};
+
 };
 }  // namespace velodyne_pointcloud
 
