@@ -190,11 +190,7 @@ namespace velodyne_pointcloud
                     scanMsg->header.stamp, i);
     }
     // publish the accumulated cloud message
-    ros::Time stamp;
-    ros::Time start = scanMsg->packets.front().stamp;
-    ros::Time end = scanMsg->packets.back().stamp;
-    stamp = start + (end - start) * 0.5;
-    output_.publish(container_ptr->finishCloud(stamp));
+    output_.publish(container_ptr->finishCloud(scanMsg->header.stamp));
 
     diag_topic_->tick(scanMsg->header.stamp);
     diagnostics_.update();
