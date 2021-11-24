@@ -22,4 +22,14 @@
     </class>
   </library>
 
+  <library path="lib/libego_motion_correction_nodelet">
+    <class name="velodyne_pointcloud/EgoMotionCorrectionNodelet"
+           type="velodyne_pointcloud::EgoMotionCorrectionNodelet"
+           base_class_type="nodelet::Nodelet">
+      <description>
+        Standalone ego motion correction nodelet.
+      </description>
+    </class>
+  </library>
+
 </class_libraries>
