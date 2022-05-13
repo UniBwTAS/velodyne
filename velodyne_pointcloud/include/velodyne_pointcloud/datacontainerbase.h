@@ -110,7 +110,6 @@ public:
     cloud.width = config_.init_width;
     cloud.height = config_.init_height;
     cloud.is_dense = static_cast<uint8_t>(config_.is_dense);
-
   }
 
 
@@ -174,7 +173,7 @@ public:
       if (!tf_buffer)
       {
         tf_buffer = std::make_shared<tf2_ros::Buffer>();
-        tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
+        tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer, true, ros::TransportHints().tcp().tcpNoDelay());
       }
     }
     else
@@ -211,12 +210,7 @@ public:
     {
       msg = tf_buffer->lookupTransform(target_frame, source_frame, time, ros::Duration(0.2));
     }
-    catch (tf2::LookupException& e)
-    {
-      ROS_ERROR("%s", e.what());
-      return false;
-    }
-    catch (tf2::ExtrapolationException& e)
+    catch (tf2::TransformException& e)
     {
       ROS_ERROR("%s", e.what());
       return false;
