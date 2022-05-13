@@ -61,6 +61,7 @@ namespace velodyne_pointcloud
 static const std::string  XYZIRT_TYPE    = "XYZIRT";
 static const std::string  ORGANIZED_TYPE = "ORGANIZED";
 static const std::string  EXTENDED_TYPE  = "EXTENDED";
+static const std::string  EXTENDED_NG_TYPE  = "EXTENDED_NG";
 
 using TransformNodeCfg = velodyne_pointcloud::TransformNodeConfig;
 
@@ -107,6 +108,10 @@ private:
   bool first_rcfg_call;
 
   boost::shared_ptr<velodyne_rawdata::DataContainerBase> container_ptr;
+  int prev_rotation_angle_{-1};
+  velodyne_msgs::VelodyneScanPtr scan_;
+  int packet_pos_in_scan{0};
+  ros::Time last_transform_lookup{};
 
   // diagnostics updater
   diagnostic_updater::Updater diagnostics_;

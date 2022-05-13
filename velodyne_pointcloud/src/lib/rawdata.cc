@@ -600,7 +600,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
         std::uint16_t rotation_segment = ((7-(laser_number - (8 * std::floor(laser_number/8)))) * 9) +
                                          firing_seq;
 
-        while(rotation_segment>= firing_seq_in_scan)
+        while(firing_seq_in_scan > 0 && rotation_segment>= firing_seq_in_scan)
         {
           rotation_segment = rotation_segment - firing_seq_in_scan;
         }

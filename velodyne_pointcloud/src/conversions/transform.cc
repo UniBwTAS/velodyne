@@ -23,6 +23,7 @@
 #include <velodyne_pointcloud/organized_cloudXYZIRT.h>
 #include <velodyne_pointcloud/pointcloudXYZIRT.h>
 #include <velodyne_pointcloud/pointcloud_extended.h>
+#include <velodyne_pointcloud/pointcloud_extended_ng.h>
 
 namespace velodyne_pointcloud
 {
@@ -59,7 +60,8 @@ namespace velodyne_pointcloud
     else
     {
         ROS_INFO_STREAM("subscribe to: "<<config_.input_ethernet_msgs_topic);
-        velodyne_ethernet_msgs_ = node.subscribe(config_.input_ethernet_msgs_topic, 10*604, &Transform::processEthernetMsgs, this);
+        velodyne_ethernet_msgs_ = node.subscribe(config_.input_ethernet_msgs_topic, 10*604, &Transform::processEthernetMsgs, this,
+                                                 ros::TransportHints().tcp().tcpNoDelay());
     }
 
     // Diagnostics
@@ -131,13 +133,23 @@ namespace velodyne_pointcloud
           }
           else
           {
-            ROS_ERROR("Wrong option in parameter cloud_type %s, using default type %s",
-                             config_.cloud_type.c_str(), XYZIRT_TYPE.c_str());
+            if(config_.cloud_type == EXTENDED_NG_TYPE) {
+              ROS_INFO_STREAM("Using the Extended NG cloud format...");
+              container_ptr =
+                  boost::shared_ptr<PointcloudExtendedNg>(new PointcloudExtendedNg(
+                      config_.max_range, config_.min_range, config_.target_frame,
+                        config_.fixed_frame, config_.num_lasers, data_->scansPerPacket()));
+            }
+              else
+              {
+                ROS_ERROR("Wrong option in parameter cloud_type %s, using default type %s",
+                          config_.cloud_type.c_str(), XYZIRT_TYPE.c_str());
 
-            container_ptr =
-                boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
-                    config_.max_range, config_.min_range, config_.target_frame,
-                    config_.fixed_frame, data_->scansPerPacket()));
+                container_ptr =
+                    boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
+                        config_.max_range, config_.min_range, config_.target_frame,
+                        config_.fixed_frame, data_->scansPerPacket()));
+              }
 
           }
 
@@ -193,53 +205,44 @@ namespace velodyne_pointcloud
   }
 
 
-  void
-    Transform::processEthernetMsgs(const ethernet_msgs::PacketConstPtr &ethernet_msg)
+  void Transform::processEthernetMsgs(const ethernet_msgs::PacketConstPtr& msg)
   {
-     if (output_.getNumSubscribers() == 0)      // no one listening?
-       return;                                  // avoid much work
+      if (output_.getNumSubscribers() == 0) // no one listening?
+          return;                           // avoid much work
 
-    // global vector to buffer several ethernet_msg:
-    static std::shared_ptr<std::vector<ethernet_msgs::PacketConstPtr>> vec_ethernet_msgs = std::make_shared<std::vector<ethernet_msgs::PacketConstPtr>>();
+      uint16_t current_angle = 0; // 0...36000
+      std::memcpy(&current_angle, &msg->payload[2], 2);
 
-    uint16_t current_angle = 0; // 0...36000
-    std::memcpy( &current_angle, &ethernet_msg->payload[ 2 ], 2 );
+      if (prev_rotation_angle_ < 0 || prev_rotation_angle_ < 18000 && current_angle >= 18000) // new rotation
+      {
+          if (prev_rotation_angle_ >= 0) // don't publish on very first packet, just init new scan
+          {
+              output_.publish(container_ptr->finishCloud(scan_->header.stamp));
+              std::cout << "LATENCY1: " << (ros::Time::now() - scan_->header.stamp).toSec() << std::endl;
+          }
 
-    static bool is_new_revolution = true;
-    if(current_angle < 9000)
-    {
-        is_new_revolution = true;
-    }
-    if(is_new_revolution && current_angle > 18000)
-    {
-        is_new_revolution = false;
+          scan_.reset(new velodyne_msgs::VelodyneScan);
+          scan_->header.stamp = msg->header.stamp;
+          scan_->header.frame_id = config_.sensor_frame;
+          container_ptr->setup(scan_);
+          packet_pos_in_scan = 0;
 
-        velodyne_msgs::VelodyneScanPtr scan(new velodyne_msgs::VelodyneScan);
-        scan->packets.reserve(vec_ethernet_msgs->size());
+          // container_ptr->computeTransformToTarget(msg->header.stamp)
+      }
+      prev_rotation_angle_ = current_angle;
 
-        for(ethernet_msgs::PacketConstPtr& msg: *vec_ethernet_msgs)
-        {
-            velodyne_msgs::VelodynePacket tmp_packet;
-            std::memcpy( &tmp_packet.data, &msg->payload[ 0 ], msg->payload.size() );
-            tmp_packet.stamp = msg->header.stamp;
-            scan->packets.push_back(tmp_packet);
-        }
+      if (std::abs((msg->header.stamp - last_transform_lookup).toSec()) > 0.01)
+      {
+          container_ptr->computeTransformToFixed(msg->header.stamp);
+          last_transform_lookup = msg->header.stamp;
+      }
 
-        if(!vec_ethernet_msgs->empty())
-        {
-            scan->header.stamp = vec_ethernet_msgs->front()->header.stamp;
-            scan->header.frame_id = config_.sensor_frame;
+      velodyne_msgs::VelodynePacket tmp_packet;
+      std::memcpy(&tmp_packet.data, &msg->payload[0], msg->payload.size());
+      tmp_packet.stamp = msg->header.stamp;
+      data_->unpack(tmp_packet, *container_ptr, scan_->header.stamp, packet_pos_in_scan);
 
-          // publish the pointcloud2
-          processScan(scan);
-        }
-
-        // delete the buffer
-        vec_ethernet_msgs->clear();
-    }
-
-    // adding to global accumulator
-    vec_ethernet_msgs->push_back(ethernet_msg);
+      ++packet_pos_in_scan;
   }
 
 } // namespace velodyne_pointcloud
