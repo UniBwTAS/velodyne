@@ -378,6 +378,8 @@ void RawData::setupAzimuthCache()
           if (timing_offsets.size())
           {
             time = timing_offsets[i][j] + time_diff_start_to_this_packet;
+          } else {
+              time = time_diff_start_to_this_packet;
           }
 
           if (tmp.uint == 0) // no valid laser beam return
