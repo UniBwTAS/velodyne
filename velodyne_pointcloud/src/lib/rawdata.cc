@@ -488,7 +488,8 @@ void RawData::setupAzimuthCache()
           data.addPoint(x_coord, y_coord, z_coord, corrections.laser_ring, raw->blocks[i].rotation, distance, intensity, time);
         }
       }
-      data.newLine();
+      if(calibration_.num_lasers != 64 || (i & 0x01) == 1)
+        data.newLine();
     }
   }
 
