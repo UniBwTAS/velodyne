@@ -6,7 +6,7 @@ ament_target_dependencies(test_row_step
   geometry_msgs
   rclcpp
   sensor_msgs
-  tf2
+  tf2_ros
   velodyne_msgs
 )
 

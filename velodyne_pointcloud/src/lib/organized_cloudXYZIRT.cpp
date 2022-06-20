@@ -32,7 +32,7 @@
 
 #include <sensor_msgs/msg/point_field.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <tf2/buffer_core.h>
+#include <tf2_ros/buffer.h>
 
 #include <cmath>
 #include <memory>
@@ -45,11 +45,11 @@ namespace velodyne_pointcloud
 
 OrganizedCloudXYZIRT::OrganizedCloudXYZIRT(
   const double min_range, const double max_range,
-  const std::string & target_frame, const std::string & fixed_frame,
+  const std::string & target_frame, const std::string & sensor_frame,
   const unsigned int num_lasers, const unsigned int scans_per_block,
-  tf2::BufferCore & buffer)
+  tf2_ros::Buffer & buffer)
 : DataContainerBase(
-    min_range, max_range, target_frame, fixed_frame,
+    min_range, max_range, target_frame, sensor_frame,
     num_lasers, 0, false, scans_per_block, buffer, 6,
     "x", 1, sensor_msgs::msg::PointField::FLOAT32,
     "y", 1, sensor_msgs::msg::PointField::FLOAT32,
@@ -64,6 +64,9 @@ OrganizedCloudXYZIRT::OrganizedCloudXYZIRT(
 
 void OrganizedCloudXYZIRT::newLine()
 {
+  if((cloud.height + 1) * cloud.row_step > cloud.data.size())
+    return;
+
   iter_x_ = iter_x_ + config_.init_width;
   iter_y_ = iter_y_ + config_.init_width;
   iter_z_ = iter_z_ + config_.init_width;
@@ -73,9 +76,9 @@ void OrganizedCloudXYZIRT::newLine()
   ++cloud.height;
 }
 
-void OrganizedCloudXYZIRT::setup(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan_msg)
+void OrganizedCloudXYZIRT::setup(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan_msg, int predicted_num_packets)
 {
-  DataContainerBase::setup(scan_msg);
+  DataContainerBase::setup(scan_msg, predicted_num_packets);
   iter_x_ = sensor_msgs::PointCloud2Iterator<float>(cloud, "x");
   iter_y_ = sensor_msgs::PointCloud2Iterator<float>(cloud, "y");
   iter_z_ = sensor_msgs::PointCloud2Iterator<float>(cloud, "z");
@@ -88,6 +91,10 @@ void OrganizedCloudXYZIRT::addPoint(
   float x, float y, float z, const uint16_t ring,
   const float distance, const float intensity, const float time)
 {
+  int data_idx = cloud.height * config_.init_width + ring;
+  if(data_idx * cloud.point_step >= cloud.data.size())
+    return;
+
   /** The laser values are not ordered, the organized structure
    * needs ordered neighbour points. The right order is defined
    * by the laser_ring value.

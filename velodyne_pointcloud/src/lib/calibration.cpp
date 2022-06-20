@@ -164,6 +164,7 @@ void operator>>(const YAML::Node & node, std::pair<int, LaserCorrection> & corre
   node[FOCAL_SLOPE] >> correction.second.focal_slope;
 
   // Calculate cached values
+  correction.second.rot_correction_deg = (correction.second.rot_correction / static_cast<float>(M_PI)) * 180;
   correction.second.cos_rot_correction =
     ::cosf(correction.second.rot_correction);
   correction.second.sin_rot_correction =

@@ -34,7 +34,7 @@
 #define VELODYNE_POINTCLOUD__POINTCLOUDXYZIRT_HPP_
 
 #include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <tf2/buffer_core.h>
+#include <tf2_ros/buffer.h>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
 
 #include <memory>
@@ -50,12 +50,12 @@ class PointcloudXYZIRT final
 public:
   explicit PointcloudXYZIRT(
     const double min_range, const double max_range, const std::string & target_frame,
-    const std::string & fixed_frame, const unsigned int scans_per_block,
-    tf2::BufferCore & tf_buffer);
+    const std::string & sensor_frame, const unsigned int scans_per_block,
+    tf2_ros::Buffer & tf_buffer);
 
   void newLine() override;
 
-  void setup(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan_msg) override;
+  void setup(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan_msg, int predicted_num_packets=-1) override;
 
   void addPoint(
     float x, float y, float z, uint16_t ring,

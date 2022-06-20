@@ -103,7 +103,7 @@ Convert::Convert(const rclcpp::NodeOptions & options)
   bool organize_cloud = this->declare_parameter("organize_cloud", false);
 
   std::string target_frame = this->declare_parameter("target_frame", "velodyne");
-  std::string fixed_frame = this->declare_parameter("fixed_frame", "velodyne");
+  std::string sensor_frame = this->declare_parameter("sensor_frame", "velodyne");
 
   RCLCPP_INFO(this->get_logger(), "correction angles: %s", calibration_file.c_str());
 
@@ -111,11 +111,11 @@ Convert::Convert(const rclcpp::NodeOptions & options)
 
   if (organize_cloud) {
     container_ptr_ = std::make_unique<OrganizedCloudXYZIRT>(
-      min_range, max_range, target_frame, fixed_frame,
+      min_range, max_range, target_frame, sensor_frame,
       data_->numLasers(), data_->scansPerPacket(), tf_buffer_);
   } else {
     container_ptr_ = std::make_unique<PointcloudXYZIRT>(
-      min_range, max_range, target_frame, fixed_frame,
+      min_range, max_range, target_frame, sensor_frame,
       data_->scansPerPacket(), tf_buffer_);
   }
 
@@ -142,7 +142,7 @@ Convert::Convert(const rclcpp::NodeOptions & options)
     diagnostic_updater::TimeStampStatusParam());
 
   data_->setParameters(min_range, max_range, view_direction, view_width);
-  container_ptr_->configure(min_range, max_range, target_frame, fixed_frame);
+  container_ptr_->configure(min_range, max_range, target_frame, sensor_frame);
 }
 
 /** @brief Callback for raw scan messages. */
@@ -159,7 +159,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
 
   // process each packet provided by the driver
   for (size_t i = 0; i < scanMsg->packets.size(); ++i) {
-    data_->unpack(scanMsg->packets[i], *container_ptr_, scanMsg->header.stamp);
+    data_->unpack(scanMsg->packets[i], *container_ptr_, scanMsg->header.stamp, i);
   }
 
   // publish the accumulated cloud message

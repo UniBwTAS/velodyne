@@ -38,7 +38,7 @@
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Vector3.h>
-#include <tf2/buffer_core.h>
+#include <tf2_ros/buffer.h>
 #include <tf2/exceptions.h>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
 
@@ -57,10 +57,10 @@ class DataContainerBase
 public:
   explicit DataContainerBase(
     const double min_range, const double max_range, const std::string & target_frame,
-    const std::string & fixed_frame, const unsigned int init_width, const unsigned int init_height,
+    const std::string & sensor_frame, const unsigned int init_width, const unsigned int init_height,
     const bool is_dense, const unsigned int scans_per_packet,
-    tf2::BufferCore & buffer, int fields, ...)
-  : config_(min_range, max_range, target_frame, fixed_frame,
+    tf2_ros::Buffer & buffer, int fields, ...)
+  : config_(min_range, max_range, target_frame, sensor_frame,
       init_width, init_height, is_dense, scans_per_packet),
     tf_buffer_(buffer)
   {
@@ -84,6 +84,8 @@ public:
     cloud.height = config_.init_height;
     cloud.is_dense = static_cast<uint8_t>(config_.is_dense);
     cloud.row_step = cloud.width * cloud.point_step;
+
+    tf_buffer_.setUsingDedicatedThread(true);
   }
 
   virtual ~DataContainerBase() {}
@@ -93,7 +95,7 @@ public:
     double min_range;          ///< minimum range to publish
     double max_range;          ///< maximum range to publish
     std::string target_frame;  ///< target frame to transform a point
-    std::string fixed_frame;   ///< fixed frame used for transform
+    std::string sensor_frame;   ///< sensor frame used for transform
     unsigned int init_width;
     unsigned int init_height;
     bool is_dense;
@@ -102,29 +104,32 @@ public:
 
     explicit Config(
       double min_range, double max_range, const std::string & target_frame,
-      const std::string & fixed_frame, unsigned int init_width,
+      const std::string & sensor_frame, unsigned int init_width,
       unsigned int init_height, bool is_dense, unsigned int scans_per_packet)
     : min_range(min_range),
       max_range(max_range),
       target_frame(target_frame),
-      fixed_frame(fixed_frame),
+      sensor_frame(sensor_frame),
       init_width(init_width),
       init_height(init_height),
       is_dense(is_dense),
       scans_per_packet(scans_per_packet),
-      transform(fixed_frame != target_frame)
+      transform(sensor_frame != target_frame)
     {
     }
   };
 
-  virtual void setup(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan_msg)
+  virtual void setup(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan_msg, int predicted_num_packets=-1)
   {
     cloud.header = scan_msg->header;
     cloud.width = config_.init_width;
     cloud.height = config_.init_height;
     cloud.is_dense = static_cast<uint8_t>(config_.is_dense);
     cloud.row_step = cloud.width * cloud.point_step;
-    cloud.data.resize(scan_msg->packets.size() * config_.scans_per_packet * cloud.point_step);
+    if(predicted_num_packets < 0)
+      cloud.data.resize(scan_msg->packets.size() * config_.scans_per_packet * cloud.point_step);
+    else
+      cloud.data.resize(predicted_num_packets * config_.scans_per_packet * cloud.point_step);
     // Clear out the last data; this is important in the organized cloud case
     std::fill(cloud.data.begin(), cloud.data.end(), 0);
   }
@@ -147,24 +152,22 @@ public:
   }
 
   void configure(
-    const double min_range, const double max_range, const std::string & fixed_frame,
+    const double min_range, const double max_range, const std::string & sensor_frame,
     const std::string & target_frame)
   {
     config_.min_range = min_range;
     config_.max_range = max_range;
-    config_.fixed_frame = fixed_frame;
+    config_.sensor_frame = sensor_frame;
     config_.target_frame = target_frame;
 
-    config_.transform = fixed_frame != target_frame;
+    config_.transform = sensor_frame != target_frame;
   }
 
   void computeTransformation(const rclcpp::Time & time)
   {
     geometry_msgs::msg::TransformStamped transform;
     try {
-      const std::chrono::nanoseconds dur(time.nanoseconds());
-      std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> time(dur);
-      transform = tf_buffer_.lookupTransform(config_.target_frame, cloud.header.frame_id, time);
+      transform = tf_buffer_.lookupTransform(config_.target_frame, cloud.header.frame_id, time, rclcpp::Duration::from_nanoseconds(0));
     } catch (tf2::LookupException & e) {
       return;
     } catch (tf2::ExtrapolationException & e) {
@@ -212,7 +215,7 @@ protected:
   }
 
   Config config_;
-  tf2::BufferCore & tf_buffer_;
+  tf2_ros::Buffer & tf_buffer_;
   Eigen::Affine3f transformation;
 };
 }  // namespace velodyne_rawdata

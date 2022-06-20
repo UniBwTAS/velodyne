@@ -38,10 +38,10 @@
 #include <message_filters/subscriber.h>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <tf2_ros/buffer.h>
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
+#include <ethernet_msgs/msg/packet.hpp>
 
 #include <memory>
 #include <string>
@@ -64,14 +64,24 @@ public:
 
 private:
   void processScan(const std::shared_ptr<const velodyne_msgs::msg::VelodyneScan> & scanMsg);
+  void processEthernetMsgs(const std::shared_ptr<const ethernet_msgs::msg::Packet> & msg);
 
   std::unique_ptr<velodyne_rawdata::RawData> data_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr output_;
   message_filters::Subscriber<velodyne_msgs::msg::VelodyneScan> velodyne_scan_;
+  rclcpp::Subscription<ethernet_msgs::msg::Packet>::SharedPtr packets_sub_;
   tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
   std::unique_ptr<tf2_ros::MessageFilter<velodyne_msgs::msg::VelodyneScan>> tf_filter_;
 
   std::unique_ptr<velodyne_rawdata::DataContainerBase> container_ptr_;
+
+  int prev_rotation_angle_{-1};
+  velodyne_msgs::msg::VelodyneScan::SharedPtr current_scan_;
+  int packet_pos_in_scan{0};
+  int avg_packets_per_rotation{-2};
+  rclcpp::Time last_transform_lookup{0u, RCL_ROS_TIME};
+  std::string sensor_frame_;
 
   // diagnostics updater
   diagnostic_updater::Updater diagnostics_;

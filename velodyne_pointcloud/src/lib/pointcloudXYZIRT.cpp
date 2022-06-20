@@ -31,7 +31,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include <sensor_msgs/msg/point_field.hpp>
-#include <tf2/buffer_core.h>
+#include <tf2_ros/buffer.h>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
 
 #include <memory>
@@ -44,10 +44,10 @@ namespace velodyne_pointcloud
 
 PointcloudXYZIRT::PointcloudXYZIRT(
   const double min_range, const double max_range,
-  const std::string & target_frame, const std::string & fixed_frame,
-  const unsigned int scans_per_block, tf2::BufferCore & tf_buffer)
+  const std::string & target_frame, const std::string & sensor_frame,
+  const unsigned int scans_per_block, tf2_ros::Buffer & tf_buffer)
 : DataContainerBase(
-    min_range, max_range, target_frame, fixed_frame,
+    min_range, max_range, target_frame, sensor_frame,
     0, 1, true, scans_per_block, tf_buffer, 6,
     "x", 1, sensor_msgs::msg::PointField::FLOAT32,
     "y", 1, sensor_msgs::msg::PointField::FLOAT32,
@@ -59,9 +59,9 @@ PointcloudXYZIRT::PointcloudXYZIRT(
   iter_intensity_(cloud, "intensity"), iter_ring_(cloud, "ring"), iter_time_(cloud, "time")
 {}
 
-void PointcloudXYZIRT::setup(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan_msg)
+void PointcloudXYZIRT::setup(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan_msg, int predicted_num_packets)
 {
-  DataContainerBase::setup(scan_msg);
+  DataContainerBase::setup(scan_msg, predicted_num_packets);
   iter_x_ = sensor_msgs::PointCloud2Iterator<float>(cloud, "x");
   iter_y_ = sensor_msgs::PointCloud2Iterator<float>(cloud, "y");
   iter_z_ = sensor_msgs::PointCloud2Iterator<float>(cloud, "z");
@@ -78,6 +78,10 @@ void PointcloudXYZIRT::addPoint(
   float x, float y, float z, uint16_t ring,
   float distance, float intensity, float time)
 {
+  int data_idx = cloud.height * config_.init_width + ring;
+  if(data_idx * cloud.point_step >= cloud.data.size())
+    return;
+
   if (!pointInRange(distance)) {
     return;
   }

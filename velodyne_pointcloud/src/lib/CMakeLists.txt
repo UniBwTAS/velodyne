@@ -9,6 +9,7 @@ ament_target_dependencies(velodyne_rawdata
   tf2
   tf2_ros
   velodyne_msgs
+  ethernet_msgs
 )
 
 target_link_libraries(velodyne_rawdata
@@ -22,7 +23,9 @@ ament_target_dependencies(velodyne_cloud_types
   rclcpp
   sensor_msgs
   tf2
+  tf2_ros
   velodyne_msgs
+  ethernet_msgs
 )
 
 install(TARGETS velodyne_cloud_types velodyne_rawdata
