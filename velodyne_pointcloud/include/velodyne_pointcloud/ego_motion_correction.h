@@ -45,6 +45,8 @@ class EgoMotionCorrection
     std::string fixed_frame_;
     float time_range_full_rotation_{};
     float time_range_for_same_tf_{};
+    std::string point_stamp_key_{};
+    bool point_stamp_in_ns_{};
 
     sensor_msgs::PointCloud2ConstPtr input_msg_;
     sensor_msgs::PointCloud2Ptr output_msg_;

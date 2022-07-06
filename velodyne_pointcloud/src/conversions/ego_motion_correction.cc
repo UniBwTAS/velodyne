@@ -15,6 +15,8 @@ EgoMotionCorrection::EgoMotionCorrection(ros::NodeHandle nh, const ros::NodeHand
     nh_private.param<std::string>("fixed_frame", fixed_frame_, "odom");
     nh_private.param<float>("time_range_full_rotation", time_range_full_rotation_, 0.1f);
     nh_private.param<float>("time_range_for_same_tf", time_range_for_same_tf_, 0.1f / 36);
+    nh_private.param<std::string>("point_stamp_key", point_stamp_key_, "time");
+    nh_private.param<bool>("point_stamp_in_ns", point_stamp_in_ns_, false);
 
     pc_sub_ = nh.subscribe("velodyne_points", 5, &EgoMotionCorrection::callbackPointCloud, this);
     pc_pub_ = nh.advertise<sensor_msgs::PointCloud2>("velodyne_points_corrected", 5);
@@ -109,7 +111,7 @@ void EgoMotionCorrection::transformAndFill(int start_firing_idx, int end_firing_
     sensor_msgs::PointCloud2Iterator<float> iter_x_out(*output_msg_, "x");
     sensor_msgs::PointCloud2Iterator<float> iter_y_out(*output_msg_, "y");
     sensor_msgs::PointCloud2Iterator<float> iter_z_out(*output_msg_, "z");
-    sensor_msgs::PointCloud2Iterator<float> iter_time_out(*output_msg_, "time");
+    sensor_msgs::PointCloud2Iterator<float> iter_time_out(*output_msg_, point_stamp_key_);
     sensor_msgs::PointCloud2Iterator<float> iter_x_sensor_out(*output_msg_, "x_sensor");
     sensor_msgs::PointCloud2Iterator<float> iter_y_sensor_out(*output_msg_, "y_sensor");
     sensor_msgs::PointCloud2Iterator<float> iter_z_sensor_out(*output_msg_, "z_sensor");
@@ -138,6 +140,8 @@ void EgoMotionCorrection::transformAndFill(int start_firing_idx, int end_firing_
             float y = *iter_y_out;
             float z = *iter_z_out;
             float dt = *iter_time_out;
+            if (point_stamp_in_ns_)
+              dt = static_cast<float>(*reinterpret_cast<uint32_t *>(&dt) / 1e9);
 
             if (!std::isnan(x))
             {
