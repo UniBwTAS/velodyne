@@ -128,7 +128,7 @@ Transform::Transform(const rclcpp::NodeOptions & options)
   tf_filter_->registerCallback(
     std::bind(&Transform::processScan, this, std::placeholders::_1));
 
-  packets_sub_ = this->create_subscription<ethernet_msgs::msg::Packet>("udp_packets", rclcpp::SensorDataQoS().keep_last(1000), std::bind(&Transform::processEthernetMsgs, this, std::placeholders::_1));
+  packets_sub_ = this->create_subscription<ethernet_msgs::msg::Packet>("udp_packets", rclcpp::SensorDataQoS().keep_last(50000), std::bind(&Transform::processEthernetMsgs, this, std::placeholders::_1));
 
   // Diagnostics
   diagnostics_.setHardwareID("Velodyne Transform");
