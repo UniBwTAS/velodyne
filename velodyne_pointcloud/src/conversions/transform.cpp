@@ -142,7 +142,7 @@ Transform::Transform(const rclcpp::NodeOptions & options)
     diagnostic_updater::TimeStampStatusParam());
 
   data_->setParameters(min_range, max_range, view_direction, view_width);
-  container_ptr_->configure(min_range, max_range, target_frame, sensor_frame);
+  container_ptr_->configure(min_range, max_range, sensor_frame, target_frame);
 }
 
 /** @brief Callback for raw scan messages.

@@ -167,7 +167,7 @@ public:
   {
     geometry_msgs::msg::TransformStamped transform;
     try {
-      transform = tf_buffer_.lookupTransform(config_.target_frame, cloud.header.frame_id, time, rclcpp::Duration::from_nanoseconds(0));
+      transform = tf_buffer_.lookupTransform(config_.target_frame, cloud.header.frame_id, time, rclcpp::Duration::from_seconds(0.2));
     } catch (tf2::LookupException & e) {
       return;
     } catch (tf2::ExtrapolationException & e) {
