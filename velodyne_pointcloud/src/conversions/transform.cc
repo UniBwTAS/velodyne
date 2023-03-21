@@ -45,6 +45,7 @@ namespace velodyne_pointcloud
 
     // advertise output point cloud (before subscribing to input data)
     output_ = node.advertise<sensor_msgs::PointCloud2>("velodyne_points", 10);
+    output_ret_mode_ = node.advertise<velodyne_msgs::VelodyneReturnMode>("velodyne_return_mode", 10,true);
 
     srv_ = boost::make_shared<dynamic_reconfigure::Server<TransformNodeCfg>> (private_nh);
     dynamic_reconfigure::Server<TransformNodeCfg>::CallbackType f;
@@ -187,6 +188,11 @@ namespace velodyne_pointcloud
     }
     // publish the accumulated cloud message
     output_.publish(container_ptr->finishCloud(scanMsg->header.stamp));
+
+    // publish return mode only if it has changed
+    velodyne_msgs::VelodyneReturnMode retmode_msg;
+    if(container_ptr->get_return_mode(retmode_msg))
+        output_ret_mode_.publish(retmode_msg);
 
     diag_topic_->tick(scanMsg->header.stamp);
     diagnostics_.update();

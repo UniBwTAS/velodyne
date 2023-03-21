@@ -54,6 +54,7 @@
 
 #include <dynamic_reconfigure/server.h>
 #include <velodyne_pointcloud/TransformNodeConfig.h>
+#include <velodyne_msgs/VelodyneReturnMode.h>
 
 namespace velodyne_pointcloud
 {
@@ -88,6 +89,7 @@ private:
   ros::Subscriber velodyne_scan_;
   ros::Subscriber velodyne_ethernet_msgs_;
   ros::Publisher output_;
+  ros::Publisher output_ret_mode_;
 
   /// configuration parameters
   typedef struct

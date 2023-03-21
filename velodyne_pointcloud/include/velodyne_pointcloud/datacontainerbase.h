@@ -35,6 +35,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <velodyne_msgs/VelodyneScan.h>
+#include <velodyne_msgs/VelodyneReturnMode.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <Eigen/Dense>
 #include <memory>
@@ -280,6 +281,25 @@ public:
     return packets_in_scan;
   }
 
+  void set_return_mode(const int current_return_mode){
+      if(current_return_mode != last_return_mode)
+      {
+          update_return_mode = true;
+          last_return_mode = current_return_mode;
+      }
+  }
+
+  bool get_return_mode(velodyne_msgs::VelodyneReturnMode& retmode_msg)
+  {
+      if(update_return_mode)
+      {
+          update_return_mode = false;
+          retmode_msg.return_mode= last_return_mode;
+          return true;
+      }
+      else
+          return false;
+  }
 
 protected:
   Config config_;
@@ -289,6 +309,8 @@ protected:
   Eigen::Affine3f tf_matrix_to_target;
   std::string sensor_frame;
   size_t  packets_in_scan{0};
+  int last_return_mode{0};
+  bool update_return_mode{false};
 };
 } /* namespace velodyne_rawdata */
 #endif  // VELODYNE_POINTCLOUD_DATACONTAINERBASE_H

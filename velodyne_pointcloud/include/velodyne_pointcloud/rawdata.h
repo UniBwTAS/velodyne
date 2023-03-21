@@ -122,7 +122,12 @@ static const float  VLS128_TOH_ADJUSTMENT    =  8.7f;   // [µs] μs. Top Of the
 static const float  VLS128_DISTANCE_RESOLUTION=  0.004f;  // [m]
 static const int  VLS128_MODEL_ID=  161;
 static const int  VLS128_BLOCKS_PER_FIRING_SEQ=  4; // A packet has 3 firing sequences and each one has 4 blocks of 32 individual laser firings
-
+static const int VLS128_RETURN_MODE_STRONGEST= 55; // Codes for the possible return modes
+static const int VLS128_RETURN_MODE_LAST= 56;
+static const int VLS128_RETURN_MODE_DUAL= 57;
+static const int VLS128_RETURN_MODE_DUAL_CONF= 59;
+static const int VLS128_RETURN_MODE_POSITION= 1204;
+static const int VLS128_MODEL_ID_POSITION= 1205;
 
 
 /** \brief Raw Velodyne packet.
@@ -207,6 +212,8 @@ private:
   }
   Config;
   Config config_;
+
+  int current_return_mode{VLS128_RETURN_MODE_STRONGEST};
 
   /**
    * Calibration file

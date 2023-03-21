@@ -67,6 +67,7 @@ namespace velodyne_driver
 
 static uint16_t DATA_PORT_NUMBER = 2368;      // default data port
 static uint16_t POSITION_PORT_NUMBER = 8308;  // default position port
+static uint8_t UDP_HEADER_SIZE = 42;  // Size of the UDP header in each package
 
 /** @brief Velodyne input base class */
 class Input

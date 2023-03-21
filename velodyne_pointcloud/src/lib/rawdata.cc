@@ -324,7 +324,7 @@ void RawData::setupAzimuthCache()
     ROS_DEBUG_STREAM("Received packet, time: " << pkt.stamp);
 
     /** special parsing for the VLS128 **/
-    if (pkt.data[1205] == VLS128_MODEL_ID) { // VLS 128
+    if (pkt.data[VLS128_MODEL_ID_POSITION] == VLS128_MODEL_ID) { // VLS 128
       unpack_vls128(pkt, data, scan_start_time, packet_pos_in_scan);
       return;
     }
@@ -516,7 +516,10 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
   int firing_seq_in_scan = std::floor(BLOCKS_PER_PACKET/VLS128_BLOCKS_PER_FIRING_SEQ) * data.packetsInScan();
 
   uint8_t laser_number, firing_order;
-  bool dual_return = (pkt.data[1204] == 57);
+
+  current_return_mode = pkt.data[VLS128_RETURN_MODE_POSITION];
+  bool dual_return = (pkt.data[VLS128_RETURN_MODE_POSITION] == VLS128_RETURN_MODE_DUAL);
+  data.set_return_mode(current_return_mode);
 
   for (int block = 0; block < BLOCKS_PER_PACKET - (VLS128_BLOCKS_PER_FIRING_SEQ* dual_return); block++) {
     // cache block for use
