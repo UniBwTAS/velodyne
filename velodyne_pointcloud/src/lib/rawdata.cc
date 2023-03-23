@@ -174,16 +174,20 @@ inline float SQR(float val) { return val*val; }
       }
     }
     else if (config_.model == "VLS128"){
+        // Only the timing offsets of the first firing sequence can be calculated beforehand, as
+        // after firmware update there is an variable rest period after each firing sequence
+        // to avoid interference from other sensors
 
-      timing_offsets.resize(3);
+      timing_offsets.resize(1);
       for(size_t i=0; i < timing_offsets.size(); ++i)
       {
-        timing_offsets[i].resize(17); // 17 (+1 for the maintenance time after firing group 8)
+        timing_offsets[i].resize(16);
       }
 
-      double full_firing_cycle = VLS128_SEQ_TDURATION * 1e-6; //seconds
-      double single_firing = VLS128_CHANNEL_TDURATION * 1e-6; // seconds
-      double offset_paket_time = VLS128_TOH_ADJUSTMENT * 1e-6; //seconds
+      const double full_firing_cycle = VLS128_SEQ_TDURATION * 1e-6; //seconds
+      const double single_firing = VLS128_CHANNEL_TDURATION * 1e-6; // seconds
+      const double offset_paket_time = VLS128_TOH_ADJUSTMENT * 1e-6; //seconds
+      const double duration_rest_period = VLS128_REST_PERIOD_TDURATION * 1e-6; //seconds
       double sequenceIndex, firingGroupIndex;
       // Compute timing offsets
       for (size_t x = 0; x < timing_offsets.size(); ++x){
@@ -191,7 +195,8 @@ inline float SQR(float val) { return val*val; }
 
           sequenceIndex = x;
           firingGroupIndex = y;
-          timing_offsets[x][y] = (full_firing_cycle * sequenceIndex) + (single_firing * firingGroupIndex) - offset_paket_time;
+          timing_offsets[x][y] = (full_firing_cycle * sequenceIndex) + (single_firing * firingGroupIndex)
+                  - offset_paket_time + (duration_rest_period*(firingGroupIndex>7?1:0));
           ROS_DEBUG(" firing_seque %lu firing_group %lu offset %f",x,y,timing_offsets[x][y]);
         }
       }
@@ -504,170 +509,299 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
   uint16_t azimuth, azimuth_next, azimuth_corrected, azimuth_rot_corrected;
   float x_coord, y_coord, z_coord;
   float distance;
-  const auto *raw = (const raw_packet_t *) &pkt.data[0];
+  const auto *raw = (const raw_packet_vls128_t *) &pkt.data[0];
   union two_bytes tmp;
 
   float cos_vert_angle, sin_vert_angle, cos_rot_correction, sin_rot_correction;
   float cos_rot_angle, sin_rot_angle;
   float xy_distance;
 
-  float time_diff_start_to_this_packet = (pkt.stamp - scan_start_time).toSec();
+  // time from the arrival of the first packet in the scan (this only works if time stamp first packes ids configured)
+  // to the arrival of the current packet
+  float time_diff_scan_start_to_this_packet = (pkt.stamp - scan_start_time).toSec();
 
-  int firing_seq_in_scan = std::floor(BLOCKS_PER_PACKET/VLS128_BLOCKS_PER_FIRING_SEQ) * data.packetsInScan();
+  // number of firing sequences in this scan
+  int num_firing_sequences_in_one_scan = std::floor(BLOCKS_PER_PACKET/VLS128_BLOCKS_PER_FIRING_SEQ) * data.packetsInScan();
 
   uint8_t laser_number, firing_order;
 
-  current_return_mode = pkt.data[VLS128_RETURN_MODE_POSITION];
-  bool dual_return = (pkt.data[VLS128_RETURN_MODE_POSITION] == VLS128_RETURN_MODE_DUAL);
+  current_return_mode = raw->return_mode;
+  bool dual_return = (current_return_mode == VLS128_RETURN_MODE_DUAL);
   data.set_return_mode(current_return_mode);
 
-  for (int block = 0; block < BLOCKS_PER_PACKET - (VLS128_BLOCKS_PER_FIRING_SEQ* dual_return); block++) {
-    // cache block for use
-    const raw_block_t &current_block = raw->blocks[block];
-    float time = 0;
+  // common functions between return modes used while parsing the packets
 
-    int bank_origin = 0;
-    // Used to detect which bank of 32 lasers is in this block
-    switch (current_block.header) {
-    case VLS128_BANK_1:
-      bank_origin = 0;
-      break;
-    case VLS128_BANK_2:
-      bank_origin = 32;
-      break;
-    case VLS128_BANK_3:
-      bank_origin = 64;
-      break;
-    case VLS128_BANK_4:
-      bank_origin = 96;
-      break;
-    default:
-      // ignore packets with mangled or otherwise different contents
-      // Do not flood the log with messages, only issue at most one
-      // of these warnings per minute.
-      ROS_WARN_STREAM_THROTTLE(60, "skipping invalid VLS-128 packet: block "
-          << block << " header value is "
-          << raw->blocks[block].header);
-      return; // bad packet: skip the rest
-    }
-
-    // Calculate difference between current and next block's azimuth angle.
-    if (block == 0) {
-      azimuth = current_block.rotation;
-    } else {
-      azimuth = azimuth_next;
-    }
-    if (block < (BLOCKS_PER_PACKET - (1+dual_return))) {
-      // Get the next block rotation to calculate how far we rotate between blocks
-      azimuth_next = raw->blocks[block + (1+dual_return)].rotation;
-
-      // Finds the difference between two successive blocks
-      azimuth_diff = (float)((36000 + azimuth_next - azimuth) % 36000);
-
-      // This is used when the last block is next to predict rotation amount
-      last_azimuth_diff = azimuth_diff;
-    } else {
-      // This makes the assumption the difference between the last block and the next packet is the
-      // same as the last to the second to last.
-      // Assumes RPM doesn't change much between blocks
-      azimuth_diff = (block == BLOCKS_PER_PACKET - (VLS128_BLOCKS_PER_FIRING_SEQ*dual_return)-1) ? 0 : last_azimuth_diff;
-    }
-
-      for (int j = 0, k = 0; j < SCANS_PER_BLOCK; j++, k += RAW_SCAN_SIZE) {
-
-        laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
-        firing_order = laser_number / 8;  // VLS-128 fires 8 lasers at a time
-
-        if (!timing_offsets.empty())
-        {
-          time = timing_offsets[block/VLS128_BLOCKS_PER_FIRING_SEQ][firing_order + laser_number/64] + time_diff_start_to_this_packet;
-        }
-
-        velodyne_pointcloud::LaserCorrection &corrections = calibration_.laser_corrections[laser_number];
-
-        // correct for the laser rotation as a function of timing during the firings
-        azimuth_corrected_f = azimuth + (azimuth_diff * vls_128_laser_azimuth_cache[firing_order]);
-        azimuth_corrected = ((uint16_t) round(azimuth_corrected_f)) % 36000;
-
-        // correct azimuth for laser rot offset
-        // Keep it in range [0,36000]
-        azimuth_rot_corrected_f = fmod(fmod(azimuth_corrected_f - corrections.rot_correction_deg*100,36000) + 36000,36000);
-        azimuth_rot_corrected = ((uint16_t) round(azimuth_rot_corrected_f));
-
-        uint16_t firing_seq = packet_pos_in_scan*std::floor(BLOCKS_PER_PACKET/VLS128_BLOCKS_PER_FIRING_SEQ )+
-                              std::floor(block/VLS128_BLOCKS_PER_FIRING_SEQ);
-
-        std::uint16_t rotation_segment = ((7-(laser_number - (8 * std::floor(laser_number/8)))) * 9) +
-                                         firing_seq;
-
-        while(rotation_segment>= firing_seq_in_scan)
-        {
-          rotation_segment = rotation_segment - firing_seq_in_scan;
-        }
-
-        // condition added to avoid calculating points which are not in the interesting defined area (min_angle < area < max_angle)
-
-        if ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle && azimuth_rot_corrected <= config_.max_angle) ||
-              (config_.min_angle > config_.max_angle && (azimuth_rot_corrected >= config_.min_angle|| azimuth_rot_corrected <= config_.max_angle)))
-        {
-          // distance extraction
-          tmp.bytes[0] = current_block.data[k];
-          tmp.bytes[1] = current_block.data[k + 1];
-          distance = tmp.uint * VLS128_DISTANCE_RESOLUTION;
-
-          // convert polar coordinates to Euclidean XYZ
-          cos_vert_angle = corrections.cos_vert_correction;
-          sin_vert_angle = corrections.sin_vert_correction;
-          cos_rot_correction = corrections.cos_rot_correction;
-          sin_rot_correction = corrections.sin_rot_correction;
-
-          // cos(a-b) = cos(a)*cos(b) + sin(a)*sin(b)
-          // sin(a-b) = sin(a)*cos(b) - cos(a)*sin(b)
-          cos_rot_angle =
-              cos_rot_table_[azimuth_corrected] * cos_rot_correction +
-              sin_rot_table_[azimuth_corrected] * sin_rot_correction;
-          sin_rot_angle =
-              sin_rot_table_[azimuth_corrected] * cos_rot_correction -
-              cos_rot_table_[azimuth_corrected] * sin_rot_correction;
-
-          // Compute the distance in the xy plane (w/o accounting for
-          // rotation)
-          xy_distance = distance * cos_vert_angle;
-
-          data.addPoint(xy_distance * cos_rot_angle,
-                        -(xy_distance * sin_rot_angle),
-                        distance * sin_vert_angle,
-                        corrections.laser_ring,
-                        azimuth_rot_corrected,
-                        distance,
-                        static_cast<float>(current_block.data[k + 2]), time,
-                        corrections.laser_ring +
-                            calibration_.num_lasers * rotation_segment,
-                        rotation_segment,
-                        firing_seq,
-                        laser_number);
-        }
-        else
-        {
-          // point is outside of the valid angle range
-          data.addPoint(nanf(""),
-                        nanf(""),
-                        nanf(""),
-                        corrections.laser_ring,
-                        azimuth_corrected,
-                        nanf(""),
-                        0.0,
-                        time,
-                        corrections.laser_ring +
-                            calibration_.num_lasers * rotation_segment,
-                        rotation_segment,
-                        firing_seq,
-                        laser_number);
-        }
+  auto get_bank_origin = [](const uint16_t& block_header)
+  {
+      switch (block_header) {
+          case VLS128_BANK_1:
+              return 0;
+          case VLS128_BANK_2:
+              return 32;
+          case VLS128_BANK_3:
+              return 64;
+          case VLS128_BANK_4:
+              return 96;
+          default:
+              return -1;
       }
+  };
 
-    if((block+1)%VLS128_BLOCKS_PER_FIRING_SEQ == 0) //add a new line every 4 blocks (one firing for each of the 128 lasers)
-      data.newLine();
+  // parce the packages according to the return mode
+  if(current_return_mode == VLS128_RETURN_MODE_STRONGEST || current_return_mode == VLS128_RETURN_MODE_LAST)
+  {
+      // variables used to estimate the time offset of each point
+      const float time_to_first_random_rest = time_diff_scan_start_to_this_packet
+                                              - VLS128_TOH_ADJUSTMENT + VLS128_SEQ_TDURATION;
+      float first_random_rest_estimate = 0;
+      float second_random_rest_estimate = 0;
+
+      // Parce the blocks
+      for (int block = 0;
+           block < BLOCKS_PER_PACKET - VLS128_BLOCKS_PER_FIRING_SEQ ; block++) {
+          // cache block for use
+          const raw_block_t &current_block = raw->blocks[block];
+          float time = 0;
+
+          //To which firing seq does this block belong in the package
+          const uint8_t  firing_seq_in_package = block/VLS128_BLOCKS_PER_FIRING_SEQ;
+          // To which firing sequence does this block belongs in the scan
+          const uint16_t firing_seq_in_scan = packet_pos_in_scan * (BLOCKS_PER_PACKET / VLS128_BLOCKS_PER_FIRING_SEQ) +
+                  firing_seq_in_package;
+
+          // Used to detect which bank of 32 lasers is in this block
+          int bank_origin = get_bank_origin(current_block.header);
+          if (bank_origin < 0)
+          {
+              // ignore packets with mangled or otherwise different contents
+              // Do not flood the log with messages, only issue at most one
+              // of these warnings per minute.
+              ROS_WARN_STREAM_THROTTLE(60, "skipping invalid VLS-128 packet: block "
+                      << block << " header value is "
+                      << raw->blocks[block].header);
+              return; // bad packet: skip the rest
+          }
+
+          // Calculate difference between current and next block's azimuth angle.
+          if (block == 0) {
+              azimuth = current_block.rotation;
+          } else {
+              azimuth = azimuth_next;
+          }
+          if (block < (BLOCKS_PER_PACKET - 1)) {
+              // Get the next block rotation to calculate how far we rotate between blocks
+              azimuth_next = raw->blocks[block + 1].rotation;
+
+              // Finds the difference between two successive blocks
+              azimuth_diff = (float) ((36000 + azimuth_next - azimuth) % 36000);
+
+              // This is used when the last block is next to predict rotation amount
+              last_azimuth_diff = azimuth_diff;
+          } else {
+              // This makes the assumption the difference between the last block and the next packet is the
+              // same as the last to the second to last.
+              // Assumes RPM doesn't change much between blocks
+              azimuth_diff = last_azimuth_diff;
+          }
+
+          // calculate the timing offsets depending on the block position in the package
+
+
+          float time_from_scan_start_to_firing_seq_azimuth_time = 0;
+
+          if(firing_seq_in_package == 0) {
+
+              time_from_scan_start_to_firing_seq_azimuth_time =
+                      time_diff_scan_start_to_this_packet;
+
+          }
+          else
+          {
+              // To calculate the time offset of the measurements beyond the first
+              // firing sequence, the random time between firing sequences must be
+              // taken into account (see pg 65 of manual Rev 3)
+
+              if (firing_seq_in_package == 1) {
+                  time_from_scan_start_to_firing_seq_azimuth_time = time_to_first_random_rest
+                                                                    + first_random_rest_estimate +
+                                                                    VLS128_TOH_ADJUSTMENT;
+              } else {
+                  time_from_scan_start_to_firing_seq_azimuth_time = time_to_first_random_rest +
+                                                                    first_random_rest_estimate +
+                                                                    VLS128_SEQ_TDURATION +
+                                                                    second_random_rest_estimate +
+                                                                    VLS128_TOH_ADJUSTMENT;
+
+              }
+
+          }
+
+          // Parce the data points
+          for (int j = 0, k = 0; j < SCANS_PER_BLOCK; j++, k += RAW_SCAN_SIZE) {
+
+              laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
+              firing_order = laser_number / 8;  // VLS-128 fires 8 lasers at a time
+
+              if (!timing_offsets.empty()) {
+
+                  time = timing_offsets[0][firing_order] +
+                          time_from_scan_start_to_firing_seq_azimuth_time;
+              }
+              else
+              {
+                  time = 0;
+              }
+
+              velodyne_pointcloud::LaserCorrection &corrections = calibration_.laser_corrections[laser_number];
+
+              // correct for the laser rotation as a function of timing during the firings
+              azimuth_corrected_f = azimuth + (azimuth_diff * vls_128_laser_azimuth_cache[firing_order]);
+              azimuth_corrected = ((uint16_t) round(azimuth_corrected_f)) % 36000;
+
+              // correct azimuth for laser rot offset
+              // Keep it in range [0,36000]
+              azimuth_rot_corrected_f = fmod(
+                      fmod(azimuth_corrected_f - corrections.rot_correction_deg * 100, 36000) + 36000, 36000);
+              azimuth_rot_corrected = ((uint16_t) round(azimuth_rot_corrected_f));
+
+              std::uint16_t rotation_segment = ((7 - (laser_number - (8 * std::floor(laser_number / 8)))) * 9) +
+                      firing_seq_in_scan;
+
+              while (rotation_segment >= num_firing_sequences_in_one_scan) {
+                  rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
+              }
+
+              // condition added to avoid calculating points which are not in the interesting defined area (min_angle < area < max_angle)
+
+              if ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
+                   azimuth_rot_corrected <= config_.max_angle) ||
+                  (config_.min_angle > config_.max_angle &&
+                   (azimuth_rot_corrected >= config_.min_angle || azimuth_rot_corrected <= config_.max_angle))) {
+                  // distance extraction
+                  tmp.bytes[0] = current_block.data[k];
+                  tmp.bytes[1] = current_block.data[k + 1];
+                  distance = tmp.uint * VLS128_DISTANCE_RESOLUTION;
+
+                  // convert polar coordinates to Euclidean XYZ
+                  cos_vert_angle = corrections.cos_vert_correction;
+                  sin_vert_angle = corrections.sin_vert_correction;
+                  cos_rot_correction = corrections.cos_rot_correction;
+                  sin_rot_correction = corrections.sin_rot_correction;
+
+                  // cos(a-b) = cos(a)*cos(b) + sin(a)*sin(b)
+                  // sin(a-b) = sin(a)*cos(b) - cos(a)*sin(b)
+                  cos_rot_angle =
+                          cos_rot_table_[azimuth_corrected] * cos_rot_correction +
+                          sin_rot_table_[azimuth_corrected] * sin_rot_correction;
+                  sin_rot_angle =
+                          sin_rot_table_[azimuth_corrected] * cos_rot_correction -
+                          cos_rot_table_[azimuth_corrected] * sin_rot_correction;
+
+                  // Compute the distance in the xy plane (w/o accounting for
+                  // rotation)
+                  xy_distance = distance * cos_vert_angle;
+
+                  data.addPoint(xy_distance * cos_rot_angle,
+                                -(xy_distance * sin_rot_angle),
+                                distance * sin_vert_angle,
+                                corrections.laser_ring,
+                                azimuth_rot_corrected,
+                                distance,
+                                static_cast<float>(current_block.data[k + 2]), time,
+                                corrections.laser_ring +
+                                calibration_.num_lasers * rotation_segment,
+                                rotation_segment,
+                                firing_seq_in_scan,
+                                laser_number);
+              } else {
+                  // point is outside of the valid angle range
+                  data.addPoint(nanf(""),
+                                nanf(""),
+                                nanf(""),
+                                corrections.laser_ring,
+                                azimuth_corrected,
+                                nanf(""),
+                                0.0,
+                                time,
+                                corrections.laser_ring +
+                                calibration_.num_lasers * rotation_segment,
+                                rotation_segment,
+                                firing_seq_in_scan,
+                                laser_number);
+              }
+          }
+
+          if ((block + 1) % VLS128_BLOCKS_PER_FIRING_SEQ ==
+              0) //add a new line every 4 blocks (one firing for each of the 128 lasers)
+              data.newLine();
+      }
+  }
+  else
+  {
+      if(current_return_mode == VLS128_RETURN_MODE_DUAL)
+      {
+          for(int block = 0; block < BLOCKS_PER_PACKET - VLS128_BLOCKS_PER_FIRING_SEQ; block = block + 2 )
+          {
+              const raw_block_t &current_block = raw->blocks[block];
+              const raw_block_t &next_block = raw->blocks[block+1];
+              float time = 0;
+
+              // Used to detect which bank of 32 lasers is in this block
+              int bank_origin = get_bank_origin(current_block.header);
+              if (bank_origin < 0)
+              {
+                  // ignore packets with mangled or otherwise different contents
+                  // Do not flood the log with messages, only issue at most one
+                  // of these warnings per minute.
+                  ROS_WARN_STREAM_THROTTLE(60, "skipping invalid VLS-128 packet: block "
+                          << block << " header value is "
+                          << raw->blocks[block].header);
+                  return; // bad packet: skip the rest
+              }
+
+              // Is not necessary to Calculate difference between current and next block's azimuth angle.
+              // as all blocks in dual return have the same azimuth
+
+              azimuth = current_block.rotation;
+
+              if (block < (BLOCKS_PER_PACKET - VLS128_BLOCKS_PER_FIRING_SEQ)) {
+                  azimuth_diff = 0;
+
+                  // This is used when the last block is next to predict rotation amount
+                  last_azimuth_diff = azimuth_diff;
+              } else { // for the last block
+                  // To calculate this the next package is necessary
+                  azimuth_diff = (block == BLOCKS_PER_PACKET - (VLS128_BLOCKS_PER_FIRING_SEQ * dual_return) - 1) ? 0
+                                                                                                                 : last_azimuth_diff;
+              }
+
+              for (int j = 0, k = 0; j < SCANS_PER_BLOCK; j++, k += RAW_SCAN_SIZE) {
+
+                  laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
+                  firing_order = laser_number / 8;  // VLS-128 fires 8 lasers at a time
+
+                  if (!timing_offsets.empty()) {
+                      time = timing_offsets[block / VLS128_BLOCKS_PER_FIRING_SEQ][firing_order + laser_number / 64] +
+                              time_diff_scan_start_to_this_packet;
+                  }
+
+              }
+
+          }
+
+      }
+      else
+      {
+          if(current_return_mode == VLS128_RETURN_MODE_DUAL_CONF)
+          {
+
+          }
+          else
+          {
+              ROS_WARN_STREAM_THROTTLE(60, "skipping invalid VLP-128 packet: Return mode is not recognised "
+                      << current_return_mode);
+          }
+      }
   }
 }
   

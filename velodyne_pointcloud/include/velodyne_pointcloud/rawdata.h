@@ -118,7 +118,8 @@ static const uint16_t VLS128_BANK_4 = 0xbbff;
 
 static const float  VLS128_CHANNEL_TDURATION  =  2.665f;  // [µs] Channels corresponds to one laser firing
 static const float  VLS128_SEQ_TDURATION      =  53.3f;   // [µs] Sequence is a set of laser firings including recharging
-static const float  VLS128_TOH_ADJUSTMENT    =  8.7f;   // [µs] μs. Top Of the Hour is aligned with the fourth firing group in a firing sequence.
+static const float  VLS128_TOH_ADJUSTMENT    =  7.0f;   // [µs] μs. Top Of the Hour is aligned with the fourth firing group in a firing sequence.
+static const float  VLS128_REST_PERIOD_TDURATION=  5.333f;  // [µs] Duration of rest period RP0 and RP1
 static const float  VLS128_DISTANCE_RESOLUTION=  0.004f;  // [m]
 static const int  VLS128_MODEL_ID=  161;
 static const int  VLS128_BLOCKS_PER_FIRING_SEQ=  4; // A packet has 3 firing sequences and each one has 4 blocks of 32 individual laser firings
@@ -149,6 +150,15 @@ typedef struct raw_packet
   uint8_t status[PACKET_STATUS_SIZE];
 }
 raw_packet_t;
+
+typedef struct raw_packet_vls128
+{
+    raw_block_t blocks[BLOCKS_PER_PACKET];
+    uint32_t time_stamp;
+    uint8_t return_mode;
+    uint8_t model_id;
+}
+        raw_packet_vls128_t;
 
 /** \brief Velodyne data conversion class */
 class RawData
