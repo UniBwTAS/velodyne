@@ -175,7 +175,7 @@ inline float SQR(float val) { return val*val; }
     }
     else if (config_.model == "VLS128"){
         // Only the timing offsets of the first firing sequence can be calculated beforehand, as
-        // after firmware update there is an variable rest period after each firing sequence
+        // after firmware update there is a variable rest period after each firing sequence
         // to avoid interference from other sensors
 
       timing_offsets.resize(1);
@@ -232,7 +232,11 @@ inline float SQR(float val) { return val*val; }
       ROS_ERROR("No Velodyne Sensor Model specified using default %s!", config_.model.c_str());
 
     }
-
+      if (! private_nh.param("rpm", config_.rpm))
+      {
+          config_.rpm = 600.0;
+          ROS_ERROR("No Velodyne RPM specified using default %f!", config_.rpm);
+      }
     buildTimings();
 
     // get path to angles.config file for this device
@@ -304,7 +308,11 @@ inline float SQR(float val) { return val*val; }
   }
 
 void RawData::setupAzimuthCache()
-{
+{ // this is a simple rule of three: if in a full cycle (seq) the sensor rotates azimuth1-azimuth0 then how much does it
+      // rotate in 2.666 times the firing group index. The + i/8 is there to take into account the rest period in the old firmware
+      // this also does not take into account that the azimuth in the message is measured after the 4 first firing groups have fired.
+      // The sqe duration is also no longer the same for each seq due to the random waiting time after firing the 128 lasers.
+
   if (config_.model == "VLS128") {
     for (uint8_t i = 0; i < 16; i++) {
       vls_128_laser_azimuth_cache[i] =
@@ -516,6 +524,8 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
   float cos_rot_angle, sin_rot_angle;
   float xy_distance;
 
+  const float vel = config_.rpm * 36000.0f / 60.0f;
+
   // time from the arrival of the first packet in the scan (this only works if time stamp first packes ids configured)
   // to the arrival of the current packet
   float time_diff_scan_start_to_this_packet = (pkt.stamp - scan_start_time).toSec();
@@ -547,18 +557,19 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
       }
   };
 
-  // parce the packages according to the return mode
+  // parse the packages according to the return mode
   if(current_return_mode == VLS128_RETURN_MODE_STRONGEST || current_return_mode == VLS128_RETURN_MODE_LAST)
   {
       // variables used to estimate the time offset of each point
       const float time_to_first_random_rest = time_diff_scan_start_to_this_packet
-                                              - VLS128_TOH_ADJUSTMENT + VLS128_SEQ_TDURATION;
-      float first_random_rest_estimate = 0;
-      float second_random_rest_estimate = 0;
+                                              - (VLS128_TOH_ADJUSTMENT * 1e-6) + (VLS128_SEQ_TDURATION* 1e-6);
+      float first_random_rest_estimate = 0.0f;
+      float second_random_rest_estimate = 0.0f;
+      float third_random_rest_estimate = 0.0f;
 
-      // Parce the blocks
+      // Parse the blocks
       for (int block = 0;
-           block < BLOCKS_PER_PACKET - VLS128_BLOCKS_PER_FIRING_SEQ ; block++) {
+           block < BLOCKS_PER_PACKET ; block++) {
           // cache block for use
           const raw_block_t &current_block = raw->blocks[block];
           float time = 0;
@@ -582,15 +593,13 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
               return; // bad packet: skip the rest
           }
 
-          // Calculate difference between current and next block's azimuth angle.
-          if (block == 0) {
-              azimuth = current_block.rotation;
-          } else {
-              azimuth = azimuth_next;
-          }
-          if (block < (BLOCKS_PER_PACKET - 1)) {
-              // Get the next block rotation to calculate how far we rotate between blocks
-              azimuth_next = raw->blocks[block + 1].rotation;
+          // Calculate difference between current and next azimuth angle.
+
+          azimuth = current_block.rotation;
+
+          if ((block % VLS128_BLOCKS_PER_FIRING_SEQ == 0) && (firing_seq_in_package < 2)) {
+              // Get the rotation of the next firing sequence to calculate how far we rotate between sequences
+              azimuth_next = raw->blocks[block + VLS128_BLOCKS_PER_FIRING_SEQ].rotation;
 
               // Finds the difference between two successive blocks
               azimuth_diff = (float) ((36000 + azimuth_next - azimuth) % 36000);
@@ -609,10 +618,23 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
 
           float time_from_scan_start_to_firing_seq_azimuth_time = 0;
 
+          // time to use in the correction of the single lasers due to the rotation according to the seq number
+          float time_to_cover_azimuth_diff = 0;
+
           if(firing_seq_in_package == 0) {
 
               time_from_scan_start_to_firing_seq_azimuth_time =
                       time_diff_scan_start_to_this_packet;
+
+              // estimate the first random rest time using the difference between the azimuths of the first and
+              // second firing seq
+              first_random_rest_estimate = (azimuth_diff / vel) - (VLS128_SEQ_TDURATION * 1e-6);
+
+              ROS_ERROR_STREAM_THROTTLE(60, "est random rest is "
+                      << first_random_rest_estimate);
+
+              time_to_cover_azimuth_diff = first_random_rest_estimate +
+                                           (VLS128_TOH_ADJUSTMENT * 1e-6);
 
           }
           else
@@ -622,21 +644,44 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
               // taken into account (see pg 65 of manual Rev 3)
 
               if (firing_seq_in_package == 1) {
+
+
                   time_from_scan_start_to_firing_seq_azimuth_time = time_to_first_random_rest
                                                                     + first_random_rest_estimate +
-                                                                    VLS128_TOH_ADJUSTMENT;
+                                                                    (VLS128_TOH_ADJUSTMENT * 1e-6);
+
+                  second_random_rest_estimate = (azimuth_diff / vel) - (VLS128_SEQ_TDURATION * 1e-6);
+
+                  ROS_ERROR_STREAM_THROTTLE(60, "est 2nd random rest is "
+                          << first_random_rest_estimate);
+
+                  time_to_cover_azimuth_diff = second_random_rest_estimate +
+                                               (VLS128_TOH_ADJUSTMENT * 1e-6);
+
               } else {
+
+
+
                   time_from_scan_start_to_firing_seq_azimuth_time = time_to_first_random_rest +
                                                                     first_random_rest_estimate +
-                                                                    VLS128_SEQ_TDURATION +
+                                                                    (VLS128_SEQ_TDURATION * 1e-6) +
                                                                     second_random_rest_estimate +
-                                                                    VLS128_TOH_ADJUSTMENT;
+                                                                    (VLS128_TOH_ADJUSTMENT * 1e-6);
+
+                  // The third random rest period can not be estimated without the next package,
+                  // here the average values according to the manual is used
+
+                  third_random_rest_estimate = 1.941 * 1e-6;
+
+                  time_to_cover_azimuth_diff = third_random_rest_estimate +
+                                               (VLS128_TOH_ADJUSTMENT * 1e-6);
 
               }
 
           }
 
-          // Parce the data points
+
+          // Parse the data points
           for (int j = 0, k = 0; j < SCANS_PER_BLOCK; j++, k += RAW_SCAN_SIZE) {
 
               laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
@@ -655,7 +700,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
               velodyne_pointcloud::LaserCorrection &corrections = calibration_.laser_corrections[laser_number];
 
               // correct for the laser rotation as a function of timing during the firings
-              azimuth_corrected_f = azimuth + (azimuth_diff * vls_128_laser_azimuth_cache[firing_order]);
+              azimuth_corrected_f = azimuth + (azimuth_diff * timing_offsets[0][firing_order]/time_to_cover_azimuth_diff);
               azimuth_corrected = ((uint16_t) round(azimuth_corrected_f)) % 36000;
 
               // correct azimuth for laser rot offset
@@ -714,7 +759,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                                 firing_seq_in_scan,
                                 laser_number);
               } else {
-                  // point is outside of the valid angle range
+                  // point is outside the valid angle range
                   data.addPoint(nanf(""),
                                 nanf(""),
                                 nanf(""),
