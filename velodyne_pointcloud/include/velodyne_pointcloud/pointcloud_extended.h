@@ -59,12 +59,12 @@ public:
                         const uint16_t azimuth, const float distance,
                         const float intensity, const float time,
                         const uint32_t sub_segment, const uint16_t  rotation_segment,
-                        const uint16_t  firing_bin, const uint8_t laser_id) override ;
+                        const uint16_t  firing_bin, const uint8_t laser_id, const uint8_t first_return_flag) override ;
 
   sensor_msgs::PointCloud2Iterator<float> iter_x, iter_y, iter_z,  iter_distance, iter_time;
   sensor_msgs::PointCloud2Iterator<uint32_t> iter_sub_segment;
   sensor_msgs::PointCloud2Iterator<uint16_t> iter_rotation_segment, iter_azimuth, iter_firing_bin, iter_ring;
-  sensor_msgs::PointCloud2Iterator<uint8_t>   iter_intensity, iter_laser_id;
+  sensor_msgs::PointCloud2Iterator<uint8_t>   iter_intensity, iter_laser_id, iter_first_ret;
 
 
 };

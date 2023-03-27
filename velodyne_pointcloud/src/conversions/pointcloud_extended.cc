@@ -12,7 +12,7 @@ PointcloudExtended::PointcloudExtended(
     const unsigned int scans_per_block)
     : DataContainerBase(
         max_range, min_range, target_frame, fixed_frame,
-        num_lasers, 0, false, scans_per_block, 12,
+        num_lasers, 0, false, scans_per_block, 13,
         "x", 1, sensor_msgs::PointField::FLOAT32,
         "y", 1, sensor_msgs::PointField::FLOAT32,
         "z", 1, sensor_msgs::PointField::FLOAT32,
@@ -24,7 +24,8 @@ PointcloudExtended::PointcloudExtended(
         "firing_bin", 1, sensor_msgs::PointField::UINT16,
         "ring", 1, sensor_msgs::PointField::UINT16,
         "intensity", 1, sensor_msgs::PointField::UINT8,
-        "laser_id", 1, sensor_msgs::PointField::UINT8),
+        "laser_id", 1, sensor_msgs::PointField::UINT8,
+        "first_return_flag", 1, sensor_msgs::PointField::UINT8),
 
       iter_x(cloud, "x"),
       iter_y(cloud, "y"),
@@ -37,7 +38,8 @@ PointcloudExtended::PointcloudExtended(
       iter_firing_bin(cloud, "firing_bin"),
       iter_ring(cloud, "ring"),
       iter_intensity(cloud, "intensity"),
-      iter_laser_id(cloud, "laser_id")
+      iter_laser_id(cloud, "laser_id"),
+      iter_first_ret(cloud, "first_return_flag")
     {
     }
 
@@ -55,6 +57,7 @@ PointcloudExtended::PointcloudExtended(
     iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud,"ring");
     iter_intensity = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"intensity");
     iter_laser_id = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"laser_id");
+    iter_first_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"first_return_flag");
 
   }
 
@@ -118,7 +121,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
                                     const uint16_t azimuth, const float distance,
                                     const float intensity, const float time,
                                     const uint32_t sub_segment, const uint16_t  rotation_segment,
-                                    const uint16_t  firing_bin, const uint8_t laser_id)
+                                    const uint16_t  firing_bin, const uint8_t laser_id, const uint8_t first_return_flag)
   {
     uint64_t  offset = ring + rotation_segment * config_.init_width;
     if(pointInRange(distance))
@@ -138,6 +141,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
       *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
       *(iter_ring + offset) = ring;
       *(iter_laser_id + offset) = laser_id;
+      *(iter_first_ret + offset) = first_return_flag;
     }
     else
     {
@@ -153,6 +157,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
       *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
       *(iter_ring + offset) = ring;
       *(iter_laser_id + offset) = laser_id;
+      *(iter_first_ret + offset) = first_return_flag;
     }
   }
 }

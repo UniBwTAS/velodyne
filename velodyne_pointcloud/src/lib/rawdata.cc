@@ -757,7 +757,8 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                                 calibration_.num_lasers * rotation_segment,
                                 rotation_segment,
                                 firing_seq_in_scan,
-                                laser_number);
+                                laser_number,
+                                1);
               } else {
                   // point is outside the valid angle range
                   data.addPoint(nanf(""),
@@ -772,7 +773,8 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                                 calibration_.num_lasers * rotation_segment,
                                 rotation_segment,
                                 firing_seq_in_scan,
-                                laser_number);
+                                laser_number,
+                                1);
               }
           }
 

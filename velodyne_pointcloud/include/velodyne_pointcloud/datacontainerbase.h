@@ -123,7 +123,7 @@ public:
                        const uint16_t azimuth, const float distance,
                        const float intensity, const float time,
                        const uint32_t sub_segment, const uint16_t  rotation_segment,
-                       const uint16_t  firing_bin, const uint8_t laser_id)
+                       const uint16_t  firing_bin, const uint8_t laser_id, const uint8_t first_return_flag)
   {
     addPoint(x, y, z, ring, azimuth, distance, intensity, time);
   }
