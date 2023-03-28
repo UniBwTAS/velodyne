@@ -238,6 +238,9 @@ private:
   // timing offset lookup table
   std::vector< std::vector<float> > timing_offsets;
 
+  // azimuth of the last package, used to estimate the laser correction due to rotation of the sensor in dual return mode
+  uint16_t azimuth_previous_packet{0};
+
   /** \brief setup per-point timing offsets
    * 
    *  Runs during initialization and determines the firing time for each point in the scan
