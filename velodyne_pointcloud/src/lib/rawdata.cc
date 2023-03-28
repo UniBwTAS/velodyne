@@ -566,6 +566,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                 const uint16_t& firing_seq_in_scan,
                 const uint8_t& laser_number,
                 const uint8_t& first_scan_flag,
+                const float time,
                 DataContainerBase& data) {
 
             if ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
@@ -607,8 +608,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               distance,
                               static_cast<float>(block.data[position + 2]),
                               time,
-                              corrections.laser_ring +
-                              calibration_.num_lasers * rotation_segment,
+                              corrections.laser_ring + calibration_.num_lasers * rotation_segment,
                               rotation_segment,
                               firing_seq_in_scan,
                               laser_number,
@@ -631,9 +631,6 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               laser_number,
                               first_scan_flag);
             }
-
-
-
         };
 
   // parse the packages according to the return mode
@@ -651,7 +648,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
            block < BLOCKS_PER_PACKET ; block++) {
           // cache block for use
           const raw_block_t &current_block = raw->blocks[block];
-          float time = 0;
+          float point_time = 0;
 
           //To which firing seq does this block belong in the package
           const uint8_t  firing_seq_in_package = block/VLS128_BLOCKS_PER_FIRING_SEQ;
@@ -756,12 +753,12 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
 
               if (!timing_offsets.empty()) {
 
-                  time = timing_offsets[0][firing_order] +
+                  point_time = timing_offsets[0][firing_order] +
                           time_from_scan_start_to_firing_seq_azimuth_time;
               }
               else
               {
-                  time = 0;
+                  point_time = 0;
               }
 
               velodyne_pointcloud::LaserCorrection &corrections = calibration_.laser_corrections[laser_number];
@@ -783,66 +780,18 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
               }
 
-              // condition added to avoid calculating points which are not in the interesting defined area (min_angle < area < max_angle)
-
-              if ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
-                   azimuth_rot_corrected <= config_.max_angle) ||
-                  (config_.min_angle > config_.max_angle &&
-                   (azimuth_rot_corrected >= config_.min_angle || azimuth_rot_corrected <= config_.max_angle))) {
-                  // distance extraction
-                  tmp.bytes[0] = current_block.data[k];
-                  tmp.bytes[1] = current_block.data[k + 1];
-                  distance = tmp.uint * VLS128_DISTANCE_RESOLUTION;
-
-                  // convert polar coordinates to Euclidean XYZ
-                  cos_vert_angle = corrections.cos_vert_correction;
-                  sin_vert_angle = corrections.sin_vert_correction;
-                  cos_rot_correction = corrections.cos_rot_correction;
-                  sin_rot_correction = corrections.sin_rot_correction;
-
-                  // cos(a-b) = cos(a)*cos(b) + sin(a)*sin(b)
-                  // sin(a-b) = sin(a)*cos(b) - cos(a)*sin(b)
-                  cos_rot_angle =
-                          cos_rot_table_[azimuth_corrected] * cos_rot_correction +
-                          sin_rot_table_[azimuth_corrected] * sin_rot_correction;
-                  sin_rot_angle =
-                          sin_rot_table_[azimuth_corrected] * cos_rot_correction -
-                          cos_rot_table_[azimuth_corrected] * sin_rot_correction;
-
-                  // Compute the distance in the xy plane (w/o accounting for
-                  // rotation)
-                  xy_distance = distance * cos_vert_angle;
-
-                  data.addPoint(xy_distance * cos_rot_angle,
-                                -(xy_distance * sin_rot_angle),
-                                distance * sin_vert_angle,
-                                corrections.laser_ring,
-                                azimuth_rot_corrected,
-                                distance,
-                                static_cast<float>(current_block.data[k + 2]), time,
-                                corrections.laser_ring +
-                                calibration_.num_lasers * rotation_segment,
-                                rotation_segment,
-                                firing_seq_in_scan,
-                                laser_number,
-                                1);
-              } else {
-                  // point is outside the valid angle range
-                  data.addPoint(nanf(""),
-                                nanf(""),
-                                nanf(""),
-                                corrections.laser_ring,
-                                azimuth_corrected,
-                                nanf(""),
-                                0.0,
-                                time,
-                                corrections.laser_ring +
-                                calibration_.num_lasers * rotation_segment,
-                                rotation_segment,
-                                firing_seq_in_scan,
-                                laser_number,
-                                1);
-              }
+              calc_point_and_add_to_data(
+                      current_block,
+                      k,
+                      corrections,
+                      azimuth_corrected,
+                      azimuth_rot_corrected,
+                      rotation_segment,
+                      firing_seq_in_scan,
+                      laser_number,
+                      1,
+                      point_time,
+                      data);
           }
 
           if ((block + 1) % VLS128_BLOCKS_PER_FIRING_SEQ ==
@@ -859,7 +808,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
           {
               const raw_block_t &first_ret_block = raw->blocks[block];
               const raw_block_t &second_ret_block = raw->blocks[block+1];
-              float time = 0;
+              float point_time = 0;
 
               //To which firing seq does this block belong in the package
               const uint8_t  firing_seq_in_package = 0;
@@ -903,12 +852,12 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   firing_order = laser_number / 8;  // VLS-128 fires 8 lasers at a time
 
                   if (!timing_offsets.empty()) {
-                      time = timing_offsets[0][firing_order] +
+                      point_time = timing_offsets[0][firing_order] +
                               time_diff_scan_start_to_this_packet;
                   }
                   else
                   {
-                      time = 0;
+                      point_time = 0;
                   }
 
                   velodyne_pointcloud::LaserCorrection &corrections = calibration_.laser_corrections[laser_number];
@@ -941,6 +890,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                           firing_seq_in_scan,
                           laser_number,
                           1,
+                          point_time,
                           data);
 
                   calc_point_and_add_to_data(
@@ -953,6 +903,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                           firing_seq_in_scan,
                           laser_number,
                           0,
+                          point_time,
                           data);
               }
           }
