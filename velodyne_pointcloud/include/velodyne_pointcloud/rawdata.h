@@ -60,9 +60,9 @@ namespace velodyne_rawdata
  * Raw Velodyne packet constants and structures.
  */
 static const int SIZE_BLOCK = 100;
-static const int RAW_SCAN_SIZE = 3;
-static const int SCANS_PER_BLOCK = 32;
-static const int BLOCK_DATA_SIZE = (SCANS_PER_BLOCK * RAW_SCAN_SIZE);
+static const int RAW_POINT_SIZE = 3;
+static const int POINTS_PER_BLOCK = 32;
+static const int BLOCK_DATA_SIZE = (POINTS_PER_BLOCK * RAW_POINT_SIZE);
 
 static const float ROTATION_RESOLUTION = 0.01f;     // [deg]
 static const uint16_t ROTATION_MAX_UNITS = 36000u;  // [deg/100]
@@ -107,7 +107,7 @@ union two_bytes
 static const int PACKET_SIZE = 1206;
 static const int BLOCKS_PER_PACKET = 12;
 static const int PACKET_STATUS_SIZE = 4;
-static const int SCANS_PER_PACKET = (SCANS_PER_BLOCK * BLOCKS_PER_PACKET);
+static const int POINTS_PER_PACKET = (POINTS_PER_BLOCK * BLOCKS_PER_PACKET);
 
 /** Special Definitions for VLS128 support **/
 // These are used to detect which bank of 32 lasers is in this block
@@ -158,7 +158,7 @@ typedef struct raw_packet_vls128
     uint8_t return_mode;
     uint8_t model_id;
 }
-        raw_packet_vls128_t;
+raw_packet_vls128_t;
 
 /** \brief Velodyne data conversion class */
 class RawData
@@ -204,7 +204,9 @@ public:
 
   void setParameters(double min_range, double max_range, double view_direction, double view_width);
 
-  int scansPerPacket() const;
+  int pointsPerPacket() const;
+
+    unsigned int read_return_mode(const velodyne_msgs::VelodynePacket& pkt);
 
 private:
   /** configuration parameters */
@@ -223,7 +225,7 @@ private:
   Config;
   Config config_;
 
-  int current_return_mode{VLS128_RETURN_MODE_STRONGEST};
+  unsigned int current_return_mode{VLS128_RETURN_MODE_STRONGEST};
 
   /**
    * Calibration file
@@ -253,7 +255,7 @@ private:
   void unpack_vlp16(const velodyne_msgs::VelodynePacket& pkt, DataContainerBase& data,
                     const ros::Time& scan_start_time);
 
-  void unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data,
+    void unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data,
                      const ros::Time& scan_start_time, const size_t packet_pos_in_scan);
 
   /** in-line test whether a point is in range */

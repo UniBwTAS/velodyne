@@ -106,7 +106,7 @@ namespace velodyne_pointcloud
         container_ptr = boost::shared_ptr<OrganizedCloudXYZIRT>(
             new OrganizedCloudXYZIRT(config_.max_range, config_.min_range,
                                     config_.target_frame, config_.fixed_frame,
-                                    config_.num_lasers, data_->scansPerPacket()));
+                                    config_.num_lasers, data_->pointsPerPacket()));
       }
       else
       {
@@ -115,7 +115,7 @@ namespace velodyne_pointcloud
           container_ptr =
               boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
                   config_.max_range, config_.min_range, config_.target_frame,
-                  config_.fixed_frame, data_->scansPerPacket()));
+                  config_.fixed_frame, data_->pointsPerPacket()));
         }
         else
         {
@@ -128,7 +128,7 @@ namespace velodyne_pointcloud
             container_ptr =
                 boost::shared_ptr<PointcloudExtended>(new PointcloudExtended(
                     config_.max_range, config_.min_range, config_.target_frame,
-                    config_.fixed_frame, config_.num_lasers, data_->scansPerPacket()));
+                    config_.fixed_frame, config_.num_lasers, data_->pointsPerPacket()));
           }
           else
           {
@@ -138,7 +138,7 @@ namespace velodyne_pointcloud
             container_ptr =
                 boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
                     config_.max_range, config_.min_range, config_.target_frame,
-                    config_.fixed_frame, data_->scansPerPacket()));
+                    config_.fixed_frame, data_->pointsPerPacket()));
 
           }
 
@@ -161,6 +161,11 @@ namespace velodyne_pointcloud
       return;                                     // avoid much work
 
     boost::lock_guard<boost::mutex> guard(reconfigure_mtx_);
+
+    if (scanMsg->packets.empty())
+        return;
+
+    container_ptr->set_return_mode(data_->read_return_mode(scanMsg->packets[0]));
 
     // allocate a point cloud with same time and frame ID as raw data
     container_ptr->setup(scanMsg);

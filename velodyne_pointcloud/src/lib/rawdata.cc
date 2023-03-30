@@ -78,7 +78,7 @@ inline float SQR(float val) { return val*val; }
     }
   }
 
-  int RawData::scansPerPacket() const
+  int RawData::pointsPerPacket() const
   {
     if( calibration_.num_lasers == 16)
     {
@@ -86,7 +86,10 @@ inline float SQR(float val) { return val*val; }
           VLP16_SCANS_PER_FIRING;
     }
     else{
-      return BLOCKS_PER_PACKET * SCANS_PER_BLOCK;
+        if (current_return_mode != VLS128_RETURN_MODE_DUAL && current_return_mode != VLS128_RETURN_MODE_DUAL_CONF)
+            return BLOCKS_PER_PACKET * POINTS_PER_BLOCK;
+        else
+            return (BLOCKS_PER_PACKET-VLS128_BLOCKS_PER_FIRING_SEQ) * POINTS_PER_BLOCK;
     }
   }
 
@@ -364,7 +367,7 @@ void RawData::setupAzimuthCache()
         bank_origin = 32;
       }
 
-      for (int j = 0, k = 0; j < SCANS_PER_BLOCK; j++, k += RAW_SCAN_SIZE) {
+      for (int j = 0, k = 0; j < POINTS_PER_BLOCK; j++, k += RAW_POINT_SIZE) {
         
         float x, y, z;
         float intensity;
@@ -505,6 +508,19 @@ void RawData::setupAzimuthCache()
     }
   }
 
+/** @brief gets the return mode from the raw VLS128 packet
+*
+*  @param pkt raw packet
+*/
+unsigned int RawData::read_return_mode(const velodyne_msgs::VelodynePacket& pkt)
+{
+    const auto *raw = (const raw_packet_vls128_t *) &pkt.data[0];
+
+    return raw->return_mode;
+
+}
+
+
 /** @brief convert raw VLS128 packet to point cloud
  *
  *  @param pkt raw packet to unpack
@@ -530,14 +546,10 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
   // to the arrival of the current packet
   float time_diff_scan_start_to_this_packet = (pkt.stamp - scan_start_time).toSec();
 
-  // number of firing sequences in this scan
-  int num_firing_sequences_in_one_scan = std::floor(BLOCKS_PER_PACKET/VLS128_BLOCKS_PER_FIRING_SEQ) * data.packetsInScan();
-
   uint8_t laser_number, firing_order;
 
   current_return_mode = raw->return_mode;
   bool dual_return = (current_return_mode == VLS128_RETURN_MODE_DUAL);
-  data.set_return_mode(current_return_mode);
 
   // common functions between return modes used while parsing the packets
 
@@ -565,7 +577,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                 const std::uint16_t& rotation_segment,
                 const uint16_t& firing_seq_in_scan,
                 const uint8_t& laser_number,
-                const uint8_t& first_scan_flag,
+                const uint8_t& first_return_flag,
                 const float time,
                 DataContainerBase& data) {
 
@@ -612,10 +624,11 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               rotation_segment,
                               firing_seq_in_scan,
                               laser_number,
-                              first_scan_flag);
+                              first_return_flag);
             }
             else {
                 // point is outside the valid angle range
+
                 data.addPoint(nanf(""),
                               nanf(""),
                               nanf(""),
@@ -629,7 +642,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               rotation_segment,
                               firing_seq_in_scan,
                               laser_number,
-                              first_scan_flag);
+                              first_return_flag);
             }
         };
 
@@ -642,6 +655,9 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
       float first_random_rest_estimate = 0.0f;
       float second_random_rest_estimate = 0.0f;
       float third_random_rest_estimate = 0.0f;
+
+      // number of firing sequences in this scan
+      int num_firing_sequences_in_one_scan = std::floor(BLOCKS_PER_PACKET/VLS128_BLOCKS_PER_FIRING_SEQ) * data.packetsInScan();
 
       // Parse the blocks
       for (int block = 0;
@@ -746,7 +762,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
           }
 
           // Parse the data points
-          for (int j = 0, k = 0; j < SCANS_PER_BLOCK; j++, k += RAW_SCAN_SIZE) {
+          for (int j = 0, k = 0; j < POINTS_PER_BLOCK; j++, k += RAW_POINT_SIZE) {
 
               laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
               firing_order = laser_number / 8;  // VLS-128 fires 8 lasers at a time
@@ -803,6 +819,9 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
   {
       if(current_return_mode == VLS128_RETURN_MODE_DUAL)
       {
+          // number of firing sequences in this scan
+          int num_firing_sequences_in_one_scan = data.packetsInScan();
+
           // Parse the blocks
           for(int block = 0; block < BLOCKS_PER_PACKET - VLS128_BLOCKS_PER_FIRING_SEQ; block = block + 2 )
           {
@@ -845,7 +864,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
 
               // Parse the data points
 
-              for (int j = 0, k = 0; j < SCANS_PER_BLOCK; j++, k += RAW_SCAN_SIZE)
+              for (int j = 0, k = 0; j < POINTS_PER_BLOCK; j++, k += RAW_POINT_SIZE)
               {
 
                   laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
@@ -878,7 +897,6 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   while (rotation_segment >= num_firing_sequences_in_one_scan) {
                       rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
                   }
-                  // condition added to avoid calculating points which are not in the interesting defined area (min_angle < area < max_angle)
 
                   calc_point_and_add_to_data(
                           first_ret_block,
@@ -907,7 +925,8 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                           data);
               }
           }
-          //add a new line after parsing this package (one firing for each of the 128 lasers)
+          //add 2 new line after parsing this package (two firings for each of the 128 lasers)
+          data.newLine();
           data.newLine();
       }
       else
@@ -982,7 +1001,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
       }
 
       for (int firing=0, k=0; firing < VLP16_FIRINGS_PER_BLOCK; firing++){
-        for (int dsr=0; dsr < VLP16_SCANS_PER_FIRING; dsr++, k+=RAW_SCAN_SIZE){
+        for (int dsr=0; dsr < VLP16_SCANS_PER_FIRING; dsr++, k+=RAW_POINT_SIZE){
           velodyne_pointcloud::LaserCorrection &corrections = calibration_.laser_corrections[dsr];
 
           /** Position Calculation */

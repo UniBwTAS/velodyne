@@ -9,10 +9,10 @@ PointcloudExtended::PointcloudExtended(
     const double max_range, const double min_range,
     const std::string& target_frame, const std::string& fixed_frame,
     const unsigned int num_lasers, // determines the width of the cloud
-    const unsigned int scans_per_block)
+    const unsigned int scans_per_packet)
     : DataContainerBase(
         max_range, min_range, target_frame, fixed_frame,
-        num_lasers, 0, false, scans_per_block, 13,
+        num_lasers, 0, false, scans_per_packet, 13,
         "x", 1, sensor_msgs::PointField::FLOAT32,
         "y", 1, sensor_msgs::PointField::FLOAT32,
         "z", 1, sensor_msgs::PointField::FLOAT32,
@@ -101,6 +101,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
     *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
     *(iter_ring + offset) = ring;
     *(iter_laser_id + offset) = 0;
+    *(iter_first_ret + offset) = 0;
   } else {
     *(iter_x + offset) = nanf("");
     *(iter_y + offset) = nanf("");
@@ -114,6 +115,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
     *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
     *(iter_ring + offset) = ring;
     *(iter_laser_id + offset) = 0;
+    *(iter_first_ret + offset) = 0;
   }
 }
 
@@ -123,42 +125,46 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
                                     const uint32_t sub_segment, const uint16_t  rotation_segment,
                                     const uint16_t  firing_bin, const uint8_t laser_id, const uint8_t first_return_flag)
   {
-    uint64_t  offset = ring + rotation_segment * config_.init_width;
-    if(pointInRange(distance))
-    {
-      // convert polar coordinates to Euclidean XYZ
-      transformPoint(x, y, z);
 
-      *(iter_x + offset) = x;
-      *(iter_y + offset) = y;
-      *(iter_z + offset) = z;
-      *(iter_distance + offset) = distance;
-      *(iter_time + offset) = time;
-      *(iter_sub_segment + offset) = sub_segment;
-      *(iter_azimuth + offset) = azimuth;
-      *(iter_rotation_segment + offset) = rotation_segment;
-      *(iter_firing_bin + offset) = firing_bin;
-      *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
-      *(iter_ring + offset) = ring;
-      *(iter_laser_id + offset) = laser_id;
-      *(iter_first_ret + offset) = first_return_flag;
+    const uint64_t  off_sec_ret =
+            (1-first_return_flag) * (packets_in_scan * config_.points_per_packet);
+    const uint64_t  off_first_ret = ring + rotation_segment * config_.init_width;
+    const uint64_t  offset = off_first_ret + off_sec_ret;
+
+    if (pointInRange(distance)) {
+        // convert polar coordinates to Euclidean XYZ
+        transformPoint(x, y, z);
+
+        *(iter_x + offset) = x;
+        *(iter_y + offset) = y;
+        *(iter_z + offset) = z;
+        *(iter_distance + offset) = distance;
+        *(iter_time + offset) = time;
+        *(iter_sub_segment + offset) = sub_segment;
+        *(iter_azimuth + offset) = azimuth;
+        *(iter_rotation_segment + offset) = rotation_segment;
+        *(iter_firing_bin + offset) = firing_bin;
+        *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
+        *(iter_ring + offset) = ring;
+        *(iter_laser_id + offset) = laser_id;
+        *(iter_first_ret + offset) = first_return_flag;
+    } else {
+
+        *(iter_x + offset) = nanf("");
+        *(iter_y + offset) = nanf("");
+        *(iter_z + offset) = nanf("");
+        *(iter_distance + offset) = nanf("");
+        *(iter_time + offset) = time;
+        *(iter_sub_segment + offset) = sub_segment;
+        *(iter_azimuth + offset) = azimuth;
+        *(iter_rotation_segment + offset) = rotation_segment;
+        *(iter_firing_bin + offset) = firing_bin;
+        *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
+        *(iter_ring + offset) = ring;
+        *(iter_laser_id + offset) = laser_id;
+        *(iter_first_ret + offset) = first_return_flag;
     }
-    else
-    {
-      *(iter_x + offset) = nanf("");
-      *(iter_y + offset) = nanf("");
-      *(iter_z + offset) = nanf("");
-      *(iter_distance + offset) = nanf("");
-      *(iter_time + offset) = time;
-      *(iter_sub_segment + offset) = sub_segment;
-      *(iter_azimuth + offset) = azimuth;
-      *(iter_rotation_segment + offset) = rotation_segment;
-      *(iter_firing_bin + offset) = firing_bin;
-      *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
-      *(iter_ring + offset) = ring;
-      *(iter_laser_id + offset) = laser_id;
-      *(iter_first_ret + offset) = first_return_flag;
-    }
+
   }
 }
 

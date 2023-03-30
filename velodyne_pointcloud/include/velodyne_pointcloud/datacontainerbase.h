@@ -50,8 +50,8 @@ class DataContainerBase
 public:
   DataContainerBase(const double max_range, const double min_range, const std::string& target_frame,
                     const std::string& fixed_frame, const unsigned int init_width, const unsigned int init_height,
-                    const bool is_dense, const unsigned int scans_per_packet, int fields, ...)
-    : config_(max_range, min_range, target_frame, fixed_frame, init_width, init_height, is_dense, scans_per_packet)
+                    const bool is_dense, const unsigned int points_per_packet, int fields, ...)
+    : config_(max_range, min_range, target_frame, fixed_frame, init_width, init_height, is_dense, points_per_packet)
   {
     va_list vl;
     cloud.fields.clear();
@@ -80,10 +80,10 @@ public:
     unsigned int init_width;
     unsigned int init_height;
     bool is_dense;
-    unsigned int scans_per_packet;
+    unsigned int points_per_packet;
 
     Config(double max_range, double min_range, std::string target_frame, std::string fixed_frame,
-           unsigned int init_width, unsigned int init_height, bool is_dense, unsigned int scans_per_packet)
+           unsigned int init_width, unsigned int init_height, bool is_dense, unsigned int points_per_packet)
       : max_range(max_range)
       , min_range(min_range)
       , target_frame(target_frame)
@@ -91,13 +91,13 @@ public:
       , init_width(init_width)
       , init_height(init_height)
       , is_dense(is_dense)
-      , scans_per_packet(scans_per_packet)
+      , points_per_packet(points_per_packet)
     {
       ROS_INFO_STREAM("Initialized container with "
-                      << "min_range: " << min_range << ", max_range: " << max_range
-                      << ", target_frame: " << target_frame << ", fixed_frame: " << fixed_frame
-                      << ", init_width: " << init_width << ", init_height: " << init_height
-                      << ", is_dense: " << is_dense << ", scans_per_packet: " << scans_per_packet);
+                              << "min_range: " << min_range << ", max_range: " << max_range
+                              << ", target_frame: " << target_frame << ", fixed_frame: " << fixed_frame
+                              << ", init_width: " << init_width << ", init_height: " << init_height
+                              << ", is_dense: " << is_dense << ", points_per_packet: " << points_per_packet);
     }
   };
 
@@ -107,8 +107,18 @@ public:
     manage_tf_buffer();
     packets_in_scan = scan_msg->packets.size();
     cloud.header.stamp = scan_msg->header.stamp;
-    cloud.data.resize(scan_msg->packets.size() * config_.scans_per_packet * cloud.point_step);
-    cloud.width = config_.init_width;
+    cloud.data.clear();
+    if(last_return_mode == 55 || last_return_mode == 56) {
+        config_.points_per_packet = 12 * 32;
+        cloud.data.resize(packets_in_scan * config_.points_per_packet * cloud.point_step);
+        cloud.width = config_.init_width;
+    }
+    else {
+        config_.points_per_packet = (12-4)*32;
+        cloud.data.resize(packets_in_scan * config_.points_per_packet * cloud.point_step * 2);
+        cloud.width = config_.init_width*2;
+    }
+
     cloud.height = config_.init_height;
     cloud.is_dense = static_cast<uint8_t>(config_.is_dense);
 
@@ -123,7 +133,8 @@ public:
                        const uint16_t azimuth, const float distance,
                        const float intensity, const float time,
                        const uint32_t sub_segment, const uint16_t  rotation_segment,
-                       const uint16_t  firing_bin, const uint8_t laser_id, const uint8_t first_return_flag)
+                       const uint16_t  firing_bin, const uint8_t laser_id,
+                       const uint8_t first_return_flag)
   {
     addPoint(x, y, z, ring, azimuth, distance, intensity, time);
   }
