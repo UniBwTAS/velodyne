@@ -568,83 +568,83 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
             }
         };
 
-        auto calc_point_and_add_to_data = [this](
-                const raw_block_t &block,
-                const int position,
-                const velodyne_pointcloud::LaserCorrection &corrections,
-                const uint16_t& azimuth_corrected,
-                const uint16_t& azimuth_rot_corrected,
-                const std::uint16_t& rotation_segment,
-                const uint16_t& firing_seq_in_scan,
-                const uint8_t& laser_number,
-                const uint8_t& first_return_flag,
-                const float time,
-                DataContainerBase& data) {
-
-            if ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
-                 azimuth_rot_corrected <= config_.max_angle) ||
-                (config_.min_angle > config_.max_angle &&
-                 (azimuth_rot_corrected >= config_.min_angle || azimuth_rot_corrected <= config_.max_angle))) {
-
-                union two_bytes tmp;
-
-                // distance extraction
-                tmp.bytes[0] = block.data[position];
-                tmp.bytes[1] = block.data[position + 1];
-                const float distance = tmp.uint * VLS128_DISTANCE_RESOLUTION;
-
-                // convert polar coordinates to Euclidean XYZ
-                const float cos_vert_angle = corrections.cos_vert_correction;
-                const float sin_vert_angle = corrections.sin_vert_correction;
-                const float cos_rot_correction = corrections.cos_rot_correction;
-                const float sin_rot_correction = corrections.sin_rot_correction;
-
-                // cos(a-b) = cos(a)*cos(b) + sin(a)*sin(b)
-                // sin(a-b) = sin(a)*cos(b) - cos(a)*sin(b)
-                const float cos_rot_angle =
-                        cos_rot_table_[azimuth_corrected] * cos_rot_correction +
-                        sin_rot_table_[azimuth_corrected] * sin_rot_correction;
-                const float sin_rot_angle =
-                        sin_rot_table_[azimuth_corrected] * cos_rot_correction -
-                        cos_rot_table_[azimuth_corrected] * sin_rot_correction;
-
-                // Compute the distance in the xy plane (w/o accounting for
-                // rotation)
-                const float xy_distance = distance * cos_vert_angle;
-
-                data.addPoint(xy_distance * cos_rot_angle,
-                              -(xy_distance * sin_rot_angle),
-                              distance * sin_vert_angle,
-                              corrections.laser_ring,
-                              azimuth_rot_corrected,
-                              distance,
-                              static_cast<float>(block.data[position + 2]),
-                              time,
-                              corrections.laser_ring + calibration_.num_lasers * rotation_segment,
-                              rotation_segment,
-                              firing_seq_in_scan,
-                              laser_number,
-                              first_return_flag);
-            }
-            else {
-                // point is outside the valid angle range
-
-                data.addPoint(nanf(""),
-                              nanf(""),
-                              nanf(""),
-                              corrections.laser_ring,
-                              azimuth_corrected,
-                              nanf(""),
-                              0.0,
-                              time,
-                              corrections.laser_ring +
-                              calibration_.num_lasers * rotation_segment,
-                              rotation_segment,
-                              firing_seq_in_scan,
-                              laser_number,
-                              first_return_flag);
-            }
-        };
+//        auto calc_point_and_add_to_data = [this](
+//                const raw_block_t &block,
+//                const int position,
+//                const velodyne_pointcloud::LaserCorrection &corrections,
+//                const uint16_t& azimuth_corrected,
+//                const uint16_t& azimuth_rot_corrected,
+//                const std::uint16_t& rotation_segment,
+//                const uint16_t& firing_seq_in_scan,
+//                const uint8_t& laser_number,
+//                const uint8_t& first_return_flag,
+//                const float time,
+//                DataContainerBase& data) {
+//
+//            if ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
+//                 azimuth_rot_corrected <= config_.max_angle) ||
+//                (config_.min_angle > config_.max_angle &&
+//                 (azimuth_rot_corrected >= config_.min_angle || azimuth_rot_corrected <= config_.max_angle))) {
+//
+//                union two_bytes tmp;
+//
+//                // distance extraction
+//                tmp.bytes[0] = block.data[position];
+//                tmp.bytes[1] = block.data[position + 1];
+//                const float distance = tmp.uint * VLS128_DISTANCE_RESOLUTION;
+//
+//                // convert polar coordinates to Euclidean XYZ
+//                const float cos_vert_angle = corrections.cos_vert_correction;
+//                const float sin_vert_angle = corrections.sin_vert_correction;
+//                const float cos_rot_correction = corrections.cos_rot_correction;
+//                const float sin_rot_correction = corrections.sin_rot_correction;
+//
+//                // cos(a-b) = cos(a)*cos(b) + sin(a)*sin(b)
+//                // sin(a-b) = sin(a)*cos(b) - cos(a)*sin(b)
+//                const float cos_rot_angle =
+//                        cos_rot_table_[azimuth_corrected] * cos_rot_correction +
+//                        sin_rot_table_[azimuth_corrected] * sin_rot_correction;
+//                const float sin_rot_angle =
+//                        sin_rot_table_[azimuth_corrected] * cos_rot_correction -
+//                        cos_rot_table_[azimuth_corrected] * sin_rot_correction;
+//
+//                // Compute the distance in the xy plane (w/o accounting for
+//                // rotation)
+//                const float xy_distance = distance * cos_vert_angle;
+//
+//                data.addPoint(xy_distance * cos_rot_angle,
+//                              -(xy_distance * sin_rot_angle),
+//                              distance * sin_vert_angle,
+//                              corrections.laser_ring,
+//                              azimuth_rot_corrected,
+//                              distance,
+//                              static_cast<float>(block.data[position + 2]),
+//                              time,
+//                              corrections.laser_ring + calibration_.num_lasers * rotation_segment,
+//                              rotation_segment,
+//                              firing_seq_in_scan,
+//                              laser_number,
+//                              first_return_flag);
+//            }
+//            else {
+//                // point is outside the valid angle range
+//
+//                data.addPoint(nanf(""),
+//                              nanf(""),
+//                              nanf(""),
+//                              corrections.laser_ring,
+//                              azimuth_corrected,
+//                              nanf(""),
+//                              0.0,
+//                              time,
+//                              corrections.laser_ring +
+//                              calibration_.num_lasers * rotation_segment,
+//                              rotation_segment,
+//                              firing_seq_in_scan,
+//                              laser_number,
+//                              first_return_flag);
+//            }
+//        };
 
   // parse the packages according to the return mode
   if(current_return_mode == VLS128_RETURN_MODE_STRONGEST || current_return_mode == VLS128_RETURN_MODE_LAST)
@@ -796,7 +796,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
               }
 
-              calc_point_and_add_to_data(
+              inl_calc_point_and_add_to_data(
                       current_block,
                       k,
                       corrections,
@@ -898,7 +898,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                       rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
                   }
 
-                  calc_point_and_add_to_data(
+                  inl_calc_point_and_add_to_data(
                           first_ret_block,
                           k,
                           corrections,
@@ -911,7 +911,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                           point_time,
                           data);
 
-                  calc_point_and_add_to_data(
+                  inl_calc_point_and_add_to_data(
                           second_ret_block,
                           k,
                           corrections,
