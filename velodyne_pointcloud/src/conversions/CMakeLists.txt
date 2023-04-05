@@ -1,4 +1,4 @@
-add_library(data_containers pointcloudXYZIRT.cc organized_cloudXYZIRT.cc pointcloud_extended.cc)
+add_library(data_containers pointcloudXYZIRT.cc organized_cloudXYZIRT.cc pointcloud_extended.cc pointcloud_extended_confidence.cc ../../include/velodyne_pointcloud/pointcloud_extended_confidence.h)
 add_dependencies(data_containers ${${PROJECT_NAME}_EXPORTED_TARGETS})
 target_link_libraries(data_containers velodyne_rawdata
                       ${catkin_LIBRARIES} ${YAML_CPP_LIBRARIES})

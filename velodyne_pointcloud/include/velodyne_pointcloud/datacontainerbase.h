@@ -139,6 +139,24 @@ public:
     addPoint(x, y, z, ring, azimuth, distance, intensity, time);
   }
 
+  virtual void addPoint_with_confidence(float x, float y, float z, const uint16_t ring,
+                                       const uint16_t azimuth, const float distance,
+                                       const float intensity, const float time,
+                                       const uint32_t sub_segment,
+                                       const uint16_t rotation_segment,
+                                       const uint16_t firing_bin, const uint8_t laser_id,
+                                       const uint8_t first_return_flag,
+                                       const uint8_t drop,
+                                       const uint8_t retro_shadow,
+                                       const uint8_t range_limited,
+                                       const uint8_t retro_ghost,
+                                       const uint8_t interference,
+                                       const uint8_t sun_lvl,
+                                       const uint8_t confidence)
+  {
+      addPoint(x, y, z, ring, azimuth, distance, intensity, time);
+  }
+
   virtual void newLine() = 0;
 
   const sensor_msgs::PointCloud2& finishCloud(ros::Time stamp)

@@ -160,6 +160,7 @@ typedef struct raw_packet_vls128
 }
 raw_packet_vls128_t;
 
+
 /** \brief Velodyne data conversion class */
 class RawData
 {
@@ -265,18 +266,18 @@ private:
             && range <= config_.max_range);
   }
 
-    inline void inl_calc_point_and_add_to_data(const raw_block_t &block,
-                                               const int position,
-                                               const velodyne_pointcloud::LaserCorrection &corrections,
-                                               const uint16_t &azimuth_corrected,
-                                               const uint16_t &azimuth_rot_corrected,
-                                               const std::uint16_t &rotation_segment,
-                                               const uint16_t &firing_seq_in_scan,
-                                               const uint8_t &laser_number,
-                                               const uint8_t &first_return_flag,
-                                               const float time,
-                                               DataContainerBase &data,
-                                               const bool add_invalid = false ) {
+    inline void calculate_and_add_point_to_container(const raw_block_t &block,
+                                                     const int position,
+                                                     const velodyne_pointcloud::LaserCorrection &corrections,
+                                                     const uint16_t &azimuth_corrected,
+                                                     const uint16_t &azimuth_rot_corrected,
+                                                     const std::uint16_t &rotation_segment,
+                                                     const uint16_t &firing_seq_in_scan,
+                                                     const uint8_t &laser_number,
+                                                     const uint8_t &first_return_flag,
+                                                     const float time,
+                                                     DataContainerBase &data,
+                                                     const bool add_invalid = false) {
         if (!add_invalid &&
             ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
               azimuth_rot_corrected <= config_.max_angle) ||
@@ -341,6 +342,97 @@ private:
                           first_return_flag);
         }
     }
+
+    inline void calculate_and_add_point_and_confidence_to_container(const raw_block_t &block,
+                                                                    const raw_block_t &confidence_block,
+                                                     const int position,
+                                                     const velodyne_pointcloud::LaserCorrection &corrections,
+                                                     const uint16_t &azimuth_corrected,
+                                                     const uint16_t &azimuth_rot_corrected,
+                                                     const std::uint16_t &rotation_segment,
+                                                     const uint16_t &firing_seq_in_scan,
+                                                     const uint8_t &laser_number,
+                                                     const uint8_t &first_return_flag,
+                                                     const float time,
+                                                     DataContainerBase &data,
+                                                     const bool add_invalid = false) {
+        if (!add_invalid &&
+            ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
+              azimuth_rot_corrected <= config_.max_angle) ||
+             (config_.min_angle > config_.max_angle &&
+              (azimuth_rot_corrected >= config_.min_angle || azimuth_rot_corrected <= config_.max_angle)))) {
+
+            union two_bytes tmp;
+
+            // distance extraction
+            tmp.bytes[0] = block.data[position];
+            tmp.bytes[1] = block.data[position + 1];
+            const float distance = tmp.uint * VLS128_DISTANCE_RESOLUTION;
+
+            // convert polar coordinates to Euclidean XYZ
+            const float cos_vert_angle = corrections.cos_vert_correction;
+            const float sin_vert_angle = corrections.sin_vert_correction;
+            const float cos_rot_correction = corrections.cos_rot_correction;
+            const float sin_rot_correction = corrections.sin_rot_correction;
+
+            // cos(a-b) = cos(a)*cos(b) + sin(a)*sin(b)
+            // sin(a-b) = sin(a)*cos(b) - cos(a)*sin(b)
+            const float cos_rot_angle =
+                    cos_rot_table_[azimuth_corrected] * cos_rot_correction +
+                    sin_rot_table_[azimuth_corrected] * sin_rot_correction;
+            const float sin_rot_angle =
+                    sin_rot_table_[azimuth_corrected] * cos_rot_correction -
+                    cos_rot_table_[azimuth_corrected] * sin_rot_correction;
+
+            // Compute the distance in the xy plane (w/o accounting for
+            // rotation)
+            const float xy_distance = distance * cos_vert_angle;
+
+            // now get the confidence information from the confidence block according to the return flag
+
+            if(first_return_flag)
+            {
+                // get info for first return
+            }
+            else
+            {
+                // get info for second return
+
+            }
+
+            data.addPoint_with_confidence(xy_distance * cos_rot_angle,
+                          -(xy_distance * sin_rot_angle),
+                          distance * sin_vert_angle,
+                          corrections.laser_ring,
+                          azimuth_rot_corrected,
+                          distance,
+                          static_cast<float>(block.data[position + 2]),
+                          time,
+                          corrections.laser_ring + calibration_.num_lasers * rotation_segment,
+                          rotation_segment,
+                          firing_seq_in_scan,
+                          laser_number,
+                          first_return_flag);
+        } else {
+            // point is outside the valid angle range
+
+            data.addPoint_with_confidence(nanf(""),
+                          nanf(""),
+                          nanf(""),
+                          corrections.laser_ring,
+                          azimuth_corrected,
+                          nanf(""),
+                          0.0,
+                          time,
+                          corrections.laser_ring +
+                          calibration_.num_lasers * rotation_segment,
+                          rotation_segment,
+                          firing_seq_in_scan,
+                          laser_number,
+                          first_return_flag);
+        }
+
+  }
 
 };
 

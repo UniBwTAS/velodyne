@@ -718,7 +718,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
               }
 
-              inl_calc_point_and_add_to_data(
+              calculate_and_add_point_to_container(
                       current_block,
                       k,
                       corrections,
@@ -739,13 +739,14 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
   }
   else
   {
-      if(current_return_mode == VLS128_RETURN_MODE_DUAL)
+      if(current_return_mode == VLS128_RETURN_MODE_DUAL || current_return_mode == VLS128_RETURN_MODE_DUAL_CONF)
       {
           // number of firing sequences in this scan
           int num_firing_sequences_in_one_scan = data.packetsInScan();
 
+          const int move_offset_for_blocks = current_return_mode == VLS128_RETURN_MODE_DUAL?2:3;
           // Parse the blocks
-          for(int block = 0; block < BLOCKS_PER_PACKET - VLS128_BLOCKS_PER_FIRING_SEQ; block = block + 2 )
+          for(int block = 0; block < BLOCKS_PER_PACKET - VLS128_BLOCKS_PER_FIRING_SEQ; block = block + move_offset_for_blocks )
           {
               const raw_block_t &first_ret_block = raw->blocks[block];
               const raw_block_t &second_ret_block = raw->blocks[block+1];
@@ -819,27 +820,28 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   while (rotation_segment >= num_firing_sequences_in_one_scan) {
                       rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
                   }
+                  if(current_return_mode == VLS128_RETURN_MODE_DUAL) {
+                      calculate_and_add_point_to_container(
+                              first_ret_block,
+                              k,
+                              corrections,
+                              azimuth_corrected,
+                              azimuth_rot_corrected,
+                              rotation_segment,
+                              firing_seq_in_scan,
+                              laser_number,
+                              1,
+                              point_time,
+                              data);
 
-                  inl_calc_point_and_add_to_data(
-                          first_ret_block,
-                          k,
-                          corrections,
-                          azimuth_corrected,
-                          azimuth_rot_corrected,
-                          rotation_segment,
-                          firing_seq_in_scan,
-                          laser_number,
-                          1,
-                          point_time,
-                          data);
+                      // check if first and second block are the same for this position,
+                      // which means no second return was detected
+                      bool add_invalid = false;
+                      if (!std::memcmp(first_ret_block.data + k, second_ret_block.data + k, 2)) {
+                          add_invalid = true;
 
-                  // check if first and second block are the same for this position,
-                  // which means no second return was detected
-
-                  if (!std::memcmp(first_ret_block.data+k,second_ret_block.data+k,2))
-                  {
-
-                      inl_calc_point_and_add_to_data(
+                      }
+                      calculate_and_add_point_to_container(
                               second_ret_block,
                               k,
                               corrections,
@@ -851,13 +853,36 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               0,
                               point_time,
                               data,
-                              true);
-
+                              add_invalid);
                   }
-                  else {
+                  else
+                  { // Return mode has confidence
+                      const raw_block_t &confidence_block = raw->blocks[block+2];
 
-                      inl_calc_point_and_add_to_data(
+                      calculate_and_add_point_and_confidence_to_container(
+                              first_ret_block,
+                              confidence_block,
+                              k,
+                              corrections,
+                              azimuth_corrected,
+                              azimuth_rot_corrected,
+                              rotation_segment,
+                              firing_seq_in_scan,
+                              laser_number,
+                              1,
+                              point_time,
+                              data);
+
+                      // check if first and second block are the same for this position,
+                      // which means no second return was detected
+                      bool add_invalid = false;
+                      if (!std::memcmp(first_ret_block.data + k, second_ret_block.data + k, 2)) {
+                          add_invalid = true;
+
+                      }
+                      calculate_and_add_point_and_confidence_to_container(
                               second_ret_block,
+                              confidence_block,
                               k,
                               corrections,
                               azimuth_corrected,
@@ -867,25 +892,25 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               laser_number,
                               0,
                               point_time,
-                              data);
+                              data,
+                              add_invalid);
+
+
+
+
                   }
               }
           }
-          //add 2 new line after parsing this package (two firings for each of the 128 lasers)
+          //add 2 new lines after parsing this package (two firings for each of the 128 lasers)
           data.newLine();
           data.newLine();
       }
       else
       {
-          if(current_return_mode == VLS128_RETURN_MODE_DUAL_CONF)
-          {
 
-          }
-          else
-          {
               ROS_WARN_STREAM_THROTTLE(60, "skipping invalid VLP-128 packet: Return mode is not recognised "
                       << current_return_mode);
-          }
+
       }
   }
 }
