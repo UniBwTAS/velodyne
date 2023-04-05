@@ -48,6 +48,7 @@
 #include <boost/format.hpp>
 #include <math.h>
 #include <vector>
+#include <bitset>
 
 #include <ros/ros.h>
 #include <velodyne_msgs/VelodyneScan.h>
@@ -159,7 +160,6 @@ typedef struct raw_packet_vls128
     uint8_t model_id;
 }
 raw_packet_vls128_t;
-
 
 /** \brief Velodyne data conversion class */
 class RawData
@@ -344,7 +344,7 @@ private:
     }
 
     inline void calculate_and_add_point_and_confidence_to_container(const raw_block_t &block,
-                                                                    const raw_block_t &confidence_block,
+                                                                    const uint8_t (&confidence_info)[3],
                                                      const int position,
                                                      const velodyne_pointcloud::LaserCorrection &corrections,
                                                      const uint16_t &azimuth_corrected,
@@ -390,13 +390,88 @@ private:
 
             // now get the confidence information from the confidence block according to the return flag
 
+            uint8_t read_mask = 0;
+            uint8_t shift = 0;
+            // ((1 << fieldLength) - 1) << (fieldIndex - 1)
+
+
+            uint8_t  drop = 0;
+            uint8_t  retro_shadow = 0;
+            uint8_t  range_limited = 0;
+            uint8_t  retro_ghost = 0;
+            uint8_t  interference = 0;
+            uint8_t  sun = 0;
+            uint8_t  confidence = 0;
+
             if(first_return_flag)
             {
                 // get info for first return
+                //drop
+                shift = (4 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                drop = (confidence_info[1] - read_mask) >> shift;
+                //retro_shadow
+                shift = (2 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                retro_shadow = (confidence_info[1] - read_mask) >> shift;
+                //range_limited
+                shift = (1 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                range_limited = (confidence_info[1] - read_mask) >> shift;
+                //retro_ghost
+                shift = (8 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                retro_ghost = (confidence_info[2] - read_mask) >> shift;
+                //interference
+                shift = (6 - 1);
+                read_mask = ((1 << 2) - 1) << shift;
+                interference = (confidence_info[2] - read_mask) >> shift;
+                //sun level
+                shift = (4 - 1);
+                read_mask = ((1 << 2) - 1) << shift;
+                sun = (confidence_info[2] - read_mask) >> shift;
+                //confidence
+                shift = (1 - 1);
+                read_mask = ((1 << 3) - 1) << shift;
+                confidence = (confidence_info[2] - read_mask) >> shift;
             }
             else
             {
                 // get info for second return
+
+                //drop
+                shift = (8 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                drop = (confidence_info[0] - read_mask) >> shift;
+                //retro_shadow
+                shift = (6 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                retro_shadow = (confidence_info[0] - read_mask) >> shift;
+                //range_limited
+                shift = (5 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                range_limited = (confidence_info[0] - read_mask) >> shift;
+                //retro_ghost
+                shift = (4 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                retro_ghost = (confidence_info[0] - read_mask) >> shift;
+                //interference
+                shift = (2 - 1);
+                read_mask = ((1 << 2) - 1) << shift;
+                interference = (confidence_info[0] - read_mask) >> shift;
+                //sun level msb
+                shift = (1 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                sun = (confidence_info[0] - read_mask) >> shift;
+                //sun level lsb
+                shift = (8 - 1);
+                read_mask = ((1 << 1) - 1) << shift;
+                sun = (confidence_info[1] - read_mask) >> shift;
+                //confidence
+                shift = (5 - 1);
+                read_mask = ((1 << 3) - 1) << shift;
+                confidence = (confidence_info[1] - read_mask) >> shift;
+
 
             }
 
@@ -412,7 +487,14 @@ private:
                           rotation_segment,
                           firing_seq_in_scan,
                           laser_number,
-                          first_return_flag);
+                          first_return_flag,
+                          drop,
+                          retro_shadow,
+                          range_limited,
+                          retro_ghost,
+                          interference,
+                          sun,
+                          confidence);
         } else {
             // point is outside the valid angle range
 
@@ -429,7 +511,14 @@ private:
                           rotation_segment,
                           firing_seq_in_scan,
                           laser_number,
-                          first_return_flag);
+                          first_return_flag,
+                          255,
+                          255,
+                          255,
+                          255,
+                          255,
+                          255,
+                          255);
         }
 
   }

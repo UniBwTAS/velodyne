@@ -820,6 +820,14 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   while (rotation_segment >= num_firing_sequences_in_one_scan) {
                       rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
                   }
+
+                  // check if first and second block are the same for this position,
+                  // which means no second return was detected
+                  bool add_invalid = false;
+                  if (!std::memcmp(first_ret_block.data + k, second_ret_block.data + k, 2)) {
+                      add_invalid = true;
+                  }
+
                   if(current_return_mode == VLS128_RETURN_MODE_DUAL) {
                       calculate_and_add_point_to_container(
                               first_ret_block,
@@ -834,13 +842,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               point_time,
                               data);
 
-                      // check if first and second block are the same for this position,
-                      // which means no second return was detected
-                      bool add_invalid = false;
-                      if (!std::memcmp(first_ret_block.data + k, second_ret_block.data + k, 2)) {
-                          add_invalid = true;
 
-                      }
                       calculate_and_add_point_to_container(
                               second_ret_block,
                               k,
@@ -859,9 +861,18 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   { // Return mode has confidence
                       const raw_block_t &confidence_block = raw->blocks[block+2];
 
+                      uint8_t confidence_info[3];
+
+                      std::copy(std::begin(confidence_block.data) + k,
+                                           std::begin(confidence_block.data) + k + 3,
+                                                      std::begin(confidence_info));
+
+                      std::swap(confidence_info[0],confidence_info[1]);
+
+
                       calculate_and_add_point_and_confidence_to_container(
                               first_ret_block,
-                              confidence_block,
+                              confidence_info,
                               k,
                               corrections,
                               azimuth_corrected,
@@ -873,16 +884,9 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               point_time,
                               data);
 
-                      // check if first and second block are the same for this position,
-                      // which means no second return was detected
-                      bool add_invalid = false;
-                      if (!std::memcmp(first_ret_block.data + k, second_ret_block.data + k, 2)) {
-                          add_invalid = true;
-
-                      }
                       calculate_and_add_point_and_confidence_to_container(
                               second_ret_block,
-                              confidence_block,
+                              confidence_info,
                               k,
                               corrections,
                               azimuth_corrected,
@@ -894,10 +898,6 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               point_time,
                               data,
                               add_invalid);
-
-
-
-
                   }
               }
           }
