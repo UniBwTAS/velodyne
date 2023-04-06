@@ -109,13 +109,13 @@ namespace velodyne_pointcloud {
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = 0;
             *(iter_first_ret + offset) = 0;
-            *(iter_drop + offset) = 255;
-            *(iter_retro_shadow + offset) = 255;
-            *(iter_range_limited + offset) = 255;
-            *(iter_retro_ghost + offset) = 255;
-            *(iter_interference + offset) = 255;
-            *(iter_sun_lvl + offset) = 255;
-            *(iter_confidence + offset) = 255;
+            *(iter_drop + offset) = 77;
+            *(iter_retro_shadow + offset) = 77;
+            *(iter_range_limited + offset) = 77;
+            *(iter_retro_ghost + offset) = 77;
+            *(iter_interference + offset) = 77;
+            *(iter_sun_lvl + offset) = 77;
+            *(iter_confidence + offset) = 77;
         } else {
             *(iter_x + offset) = nanf("");
             *(iter_y + offset) = nanf("");
@@ -130,13 +130,13 @@ namespace velodyne_pointcloud {
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = 0;
             *(iter_first_ret + offset) = 0;
-            *(iter_drop + offset) = 255;
-            *(iter_retro_shadow + offset) = 255;
-            *(iter_range_limited + offset) = 255;
-            *(iter_retro_ghost + offset) = 255;
-            *(iter_interference + offset) = 255;
-            *(iter_sun_lvl + offset) = 255;
-            *(iter_confidence + offset) = 255;
+            *(iter_drop + offset) = 44;
+            *(iter_retro_shadow + offset) = 44;
+            *(iter_range_limited + offset) = 44;
+            *(iter_retro_ghost + offset) = 44;
+            *(iter_interference + offset) = 44;
+            *(iter_sun_lvl + offset) = 44;
+            *(iter_confidence + offset) = 44;
         }
     }
 
@@ -169,13 +169,13 @@ namespace velodyne_pointcloud {
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
             *(iter_first_ret + offset) = first_return_flag;
-            *(iter_drop + offset) = 255;
-            *(iter_retro_shadow + offset) = 255;
-            *(iter_range_limited + offset) = 255;
-            *(iter_retro_ghost + offset) = 255;
-            *(iter_interference + offset) = 255;
-            *(iter_sun_lvl + offset) = 255;
-            *(iter_confidence + offset) = 255;
+            *(iter_drop + offset) = 22;
+            *(iter_retro_shadow + offset) = 22;
+            *(iter_range_limited + offset) = 22;
+            *(iter_retro_ghost + offset) = 22;
+            *(iter_interference + offset) = 22;
+            *(iter_sun_lvl + offset) = 22;
+            *(iter_confidence + offset) = 22;
         } else {
 
             *(iter_x + offset) = nanf("");
@@ -191,13 +191,13 @@ namespace velodyne_pointcloud {
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
             *(iter_first_ret + offset) = first_return_flag;
-            *(iter_drop + offset) = 255;
-            *(iter_retro_shadow + offset) = 255;
-            *(iter_range_limited + offset) = 255;
-            *(iter_retro_ghost + offset) = 255;
-            *(iter_interference + offset) = 255;
-            *(iter_sun_lvl + offset) = 255;
-            *(iter_confidence + offset) = 255;
+            *(iter_drop + offset) = 33;
+            *(iter_retro_shadow + offset) = 33;
+            *(iter_range_limited + offset) = 33;
+            *(iter_retro_ghost + offset) = 33;
+            *(iter_interference + offset) = 33;
+            *(iter_sun_lvl + offset) = 33;
+            *(iter_confidence + offset) = 33;
         }
     }
 
@@ -261,13 +261,13 @@ namespace velodyne_pointcloud {
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
             *(iter_first_ret + offset) = first_return_flag;
-            *(iter_drop + offset) = 255;
-            *(iter_retro_shadow + offset) = 255;
-            *(iter_range_limited + offset) = 255;
-            *(iter_retro_ghost + offset) = 255;
-            *(iter_interference + offset) = 255;
-            *(iter_sun_lvl + offset) = 255;
-            *(iter_confidence + offset) = 255;
+            *(iter_drop + offset) = 88;
+            *(iter_retro_shadow + offset) = 88;
+            *(iter_range_limited + offset) = 88;
+            *(iter_retro_ghost + offset) = 88;
+            *(iter_interference + offset) = 88;
+            *(iter_sun_lvl + offset) = 88;
+            *(iter_confidence + offset) = 88;
         }
 
     }

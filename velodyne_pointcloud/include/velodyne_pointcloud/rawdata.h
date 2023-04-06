@@ -395,13 +395,13 @@ private:
             // ((1 << fieldLength) - 1) << (fieldIndex - 1)
 
 
-            uint8_t  drop = 255;
-            uint8_t  retro_shadow = 255;
-            uint8_t  range_limited = 255;
-            uint8_t  retro_ghost = 255;
-            uint8_t  interference = 255;
-            uint8_t  sun = 255;
-            uint8_t  confidence = 255;
+            uint8_t  drop = 66;
+            uint8_t  retro_shadow = 66;
+            uint8_t  range_limited = 66;
+            uint8_t  retro_ghost = 66;
+            uint8_t  interference = 66;
+            uint8_t  sun = 66;
+            uint8_t  confidence = 66;
 
             if(first_return_flag)
             {
@@ -409,31 +409,32 @@ private:
                 //drop
                 shift = (4 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                drop = (confidence_info[1] - read_mask) >> shift;
+                drop = (confidence_info[1] & read_mask) >> shift;
                 //retro_shadow
                 shift = (2 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                retro_shadow = (confidence_info[1] - read_mask) >> shift;
+                retro_shadow = (confidence_info[1] & read_mask) >> shift;
                 //range_limited
                 shift = (1 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                range_limited = (confidence_info[1] - read_mask) >> shift;
+                range_limited = (confidence_info[1] & read_mask) >> shift;
                 //retro_ghost
                 shift = (8 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                retro_ghost = (confidence_info[2] - read_mask) >> shift;
+                retro_ghost = (confidence_info[2] & read_mask) >> shift;
                 //interference
                 shift = (6 - 1);
                 read_mask = ((1 << 2) - 1) << shift;
-                interference = (confidence_info[2] - read_mask) >> shift;
+                interference = (confidence_info[2] & read_mask) >> shift;
                 //sun level
                 shift = (4 - 1);
                 read_mask = ((1 << 2) - 1) << shift;
-                sun = (confidence_info[2] - read_mask) >> shift;
+                sun = (confidence_info[2] & read_mask) >> shift;
                 //confidence
                 shift = (1 - 1);
                 read_mask = ((1 << 3) - 1) << shift;
-                confidence = (confidence_info[2] - read_mask) >> shift;
+                confidence = (confidence_info[2] & read_mask) >> shift;
+
             }
             else
             {
@@ -442,35 +443,35 @@ private:
                 //drop
                 shift = (8 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                drop = (confidence_info[0] - read_mask) >> shift;
+                drop = (confidence_info[0] & read_mask) >> shift;
                 //retro_shadow
                 shift = (6 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                retro_shadow = (confidence_info[0] - read_mask) >> shift;
+                retro_shadow = (confidence_info[0] & read_mask) >> shift;
                 //range_limited
                 shift = (5 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                range_limited = (confidence_info[0] - read_mask) >> shift;
+                range_limited = (confidence_info[0] & read_mask) >> shift;
                 //retro_ghost
                 shift = (4 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                retro_ghost = (confidence_info[0] - read_mask) >> shift;
+                retro_ghost = (confidence_info[0] & read_mask) >> shift;
                 //interference
                 shift = (2 - 1);
                 read_mask = ((1 << 2) - 1) << shift;
-                interference = (confidence_info[0] - read_mask) >> shift;
+                interference = (confidence_info[0] & read_mask) >> shift;
                 //sun level msb
                 shift = (1 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                sun = (confidence_info[0] - read_mask) >> (shift-1);
+                sun = (confidence_info[0] & read_mask) >> (shift-1);
                 //sun level lsb
                 shift = (8 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                sun = sun & ((confidence_info[1] - read_mask) >> shift);
+                sun = sun & ((confidence_info[1] & read_mask) >> shift);
                 //confidence
                 shift = (5 - 1);
                 read_mask = ((1 << 3) - 1) << shift;
-                confidence = (confidence_info[1] - read_mask) >> shift;
+                confidence = (confidence_info[1] & read_mask) >> shift;
 
 
             }
@@ -512,13 +513,13 @@ private:
                           firing_seq_in_scan,
                           laser_number,
                           first_return_flag,
-                          255,
-                          255,
-                          255,
-                          255,
-                          255,
-                          255,
-                          255);
+                          99,
+                          99,
+                          99,
+                          99,
+                          99,
+                          99,
+                          99);
         }
 
   }

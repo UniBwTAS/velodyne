@@ -861,9 +861,8 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                       std::copy(std::begin(confidence_block.data) + k,
                                            std::begin(confidence_block.data) + k + 3,
                                                       std::begin(confidence_info));
-
+                      
                       std::swap(confidence_info[0],confidence_info[1]);
-
 
                       calculate_and_add_point_and_confidence_to_container(
                               first_ret_block,
