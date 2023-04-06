@@ -23,6 +23,7 @@
 #include <velodyne_pointcloud/organized_cloudXYZIRT.h>
 #include <velodyne_pointcloud/pointcloudXYZIRT.h>
 #include <velodyne_pointcloud/pointcloud_extended.h>
+#include <velodyne_pointcloud/pointcloud_extended_confidence.h>
 
 namespace velodyne_pointcloud
 {
@@ -78,76 +79,80 @@ namespace velodyne_pointcloud
 
   }
 
-  void Transform::reconfigure_callback(
-      velodyne_pointcloud::TransformNodeConfig &config, uint32_t level)
-  {
-    ROS_INFO_STREAM("Reconfigure request.");
-    data_->setParameters(config.min_range, config.max_range,
-                         config.view_direction, config.view_width);
-    config_.sensor_frame = config.sensor_frame;
-    config_.target_frame = config.target_frame;
-    config_.fixed_frame = config.fixed_frame;
-    ROS_INFO_STREAM("Sensor frame ID now: " << config_.sensor_frame);
-    ROS_INFO_STREAM("Target frame ID now: " << config_.target_frame);
-    ROS_INFO_STREAM("Fixed frame ID now: " << config_.fixed_frame);
-    config_.min_range = config.min_range;
-    config_.max_range = config.max_range;
-    config_.input_ethernet_msgs_topic = config.input_ethernet_msgs_topic;
+    void Transform::reconfigure_callback(
+            velodyne_pointcloud::TransformNodeConfig &config, uint32_t level) {
+        ROS_INFO_STREAM("Reconfigure request.");
+        data_->setParameters(config.min_range, config.max_range,
+                             config.view_direction, config.view_width);
+        config_.sensor_frame = config.sensor_frame;
+        config_.target_frame = config.target_frame;
+        config_.fixed_frame = config.fixed_frame;
+        ROS_INFO_STREAM("Sensor frame ID now: " << config_.sensor_frame);
+        ROS_INFO_STREAM("Target frame ID now: " << config_.target_frame);
+        ROS_INFO_STREAM("Fixed frame ID now: " << config_.fixed_frame);
+        config_.min_range = config.min_range;
+        config_.max_range = config.max_range;
+        config_.input_ethernet_msgs_topic = config.input_ethernet_msgs_topic;
 
-    boost::lock_guard<boost::mutex> guard(reconfigure_mtx_);
+        boost::lock_guard<boost::mutex> guard(reconfigure_mtx_);
 
-    if(first_rcfg_call || config.cloud_type != config_.cloud_type){
-      first_rcfg_call = false;
-      config_.cloud_type = config.cloud_type;
+        if (first_rcfg_call || config.cloud_type != config_.cloud_type) {
+            first_rcfg_call = false;
+            config_.cloud_type = config.cloud_type;
 
-      if(config_.cloud_type == ORGANIZED_TYPE)
-      {
-        ROS_INFO_STREAM("Using the organized cloud format...");
-        container_ptr = boost::shared_ptr<OrganizedCloudXYZIRT>(
-            new OrganizedCloudXYZIRT(config_.max_range, config_.min_range,
-                                    config_.target_frame, config_.fixed_frame,
-                                    config_.num_lasers, data_->pointsPerPacket()));
-      }
-      else
-      {
-        if(config_.cloud_type == XYZIRT_TYPE) {
-          ROS_INFO_STREAM("Using the XYZIRT cloud format...");
-          container_ptr =
-              boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
-                  config_.max_range, config_.min_range, config_.target_frame,
-                  config_.fixed_frame, data_->pointsPerPacket()));
-        }
-        else
-        {
-          if(config_.cloud_type == EXTENDED_TYPE) {
-            if(config_.num_lasers != 128)
-            {
-              ROS_ERROR_STREAM("Using the Extended cloud format with wrong model, only VLS128!");
+            if (config_.cloud_type == ORGANIZED_TYPE) {
+                ROS_INFO_STREAM("Using the organized cloud format...");
+                container_ptr = boost::shared_ptr<OrganizedCloudXYZIRT>(
+                        new OrganizedCloudXYZIRT(config_.max_range, config_.min_range,
+                                                 config_.target_frame, config_.fixed_frame,
+                                                 config_.num_lasers, data_->pointsPerPacket()));
+            } else {
+                if (config_.cloud_type == XYZIRT_TYPE) {
+                    ROS_INFO_STREAM("Using the XYZIRT cloud format...");
+                    container_ptr =
+                            boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
+                                    config_.max_range, config_.min_range, config_.target_frame,
+                                    config_.fixed_frame, data_->pointsPerPacket()));
+                } else {
+                    if (config_.cloud_type == EXTENDED_TYPE) {
+                        if (config_.num_lasers != 128) {
+                            ROS_ERROR_STREAM("Using the Extended cloud format with wrong model, only VLS128!");
+                        }
+                        ROS_INFO_STREAM("Using the Extended cloud format...");
+                        container_ptr =
+                                boost::shared_ptr<PointcloudExtended>(new PointcloudExtended(
+                                        config_.max_range, config_.min_range, config_.target_frame,
+                                        config_.fixed_frame, config_.num_lasers, data_->pointsPerPacket()));
+                    } else {
+
+                        if (config_.cloud_type == EXTENDEDCONF_TYPE) {
+
+                            if (config_.num_lasers != 128) {
+                                ROS_ERROR_STREAM("Using the Extended cloud format with wrong model, only VLS128!");
+                            }
+                            ROS_INFO_STREAM("Using the Extended cloud format with confidence information...");
+                            container_ptr =
+                                    boost::shared_ptr<PointcloudExtendedConfidence>(new PointcloudExtendedConfidence(
+                                            config_.max_range, config_.min_range, config_.target_frame,
+                                            config_.fixed_frame, config_.num_lasers, data_->pointsPerPacket()));
+                        } else {
+                            ROS_ERROR("Wrong option in parameter cloud_type %s, using default type %s",
+                                      config_.cloud_type.c_str(), XYZIRT_TYPE.c_str());
+
+                            container_ptr =
+                                    boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
+                                            config_.max_range, config_.min_range, config_.target_frame,
+                                            config_.fixed_frame, data_->pointsPerPacket()));
+
+                        }
+                    }
+
+                }
             }
-            ROS_INFO_STREAM("Using the Extended cloud format...");
-            container_ptr =
-                boost::shared_ptr<PointcloudExtended>(new PointcloudExtended(
-                    config_.max_range, config_.min_range, config_.target_frame,
-                    config_.fixed_frame, config_.num_lasers, data_->pointsPerPacket()));
-          }
-          else
-          {
-            ROS_ERROR("Wrong option in parameter cloud_type %s, using default type %s",
-                             config_.cloud_type.c_str(), XYZIRT_TYPE.c_str());
-
-            container_ptr =
-                boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
-                    config_.max_range, config_.min_range, config_.target_frame,
-                    config_.fixed_frame, data_->pointsPerPacket()));
-
-          }
 
         }
-      }
-
+        container_ptr->configure(config_.max_range, config_.min_range, config_.fixed_frame, config_.target_frame);
     }
-    container_ptr->configure(config_.max_range, config_.min_range, config_.fixed_frame, config_.target_frame);
-  }
 
   /** @brief Callback for raw scan messages.
    *

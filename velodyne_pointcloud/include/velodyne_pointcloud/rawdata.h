@@ -395,13 +395,13 @@ private:
             // ((1 << fieldLength) - 1) << (fieldIndex - 1)
 
 
-            uint8_t  drop = 0;
-            uint8_t  retro_shadow = 0;
-            uint8_t  range_limited = 0;
-            uint8_t  retro_ghost = 0;
-            uint8_t  interference = 0;
-            uint8_t  sun = 0;
-            uint8_t  confidence = 0;
+            uint8_t  drop = 255;
+            uint8_t  retro_shadow = 255;
+            uint8_t  range_limited = 255;
+            uint8_t  retro_ghost = 255;
+            uint8_t  interference = 255;
+            uint8_t  sun = 255;
+            uint8_t  confidence = 255;
 
             if(first_return_flag)
             {
@@ -462,11 +462,11 @@ private:
                 //sun level msb
                 shift = (1 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                sun = (confidence_info[0] - read_mask) >> shift;
+                sun = (confidence_info[0] - read_mask) >> (shift-1);
                 //sun level lsb
                 shift = (8 - 1);
                 read_mask = ((1 << 1) - 1) << shift;
-                sun = (confidence_info[1] - read_mask) >> shift;
+                sun = sun & ((confidence_info[1] - read_mask) >> shift);
                 //confidence
                 shift = (5 - 1);
                 read_mask = ((1 << 3) - 1) << shift;

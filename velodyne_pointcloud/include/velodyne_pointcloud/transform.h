@@ -62,6 +62,7 @@ namespace velodyne_pointcloud
 static const std::string  XYZIRT_TYPE    = "XYZIRT";
 static const std::string  ORGANIZED_TYPE = "ORGANIZED";
 static const std::string  EXTENDED_TYPE  = "EXTENDED";
+static const std::string  EXTENDEDCONF_TYPE  = "EXTENDEDCONF";
 
 using TransformNodeCfg = velodyne_pointcloud::TransformNodeConfig;
 

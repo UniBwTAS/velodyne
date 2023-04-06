@@ -531,14 +531,9 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
   float azimuth_diff, azimuth_corrected_f, azimuth_rot_corrected_f;
   float last_azimuth_diff = 0;
   uint16_t azimuth, azimuth_next, azimuth_corrected, azimuth_rot_corrected;
-  float x_coord, y_coord, z_coord;
-  float distance;
-  const auto *raw = (const raw_packet_vls128_t *) &pkt.data[0];
-  union two_bytes tmp;
 
-  float cos_vert_angle, sin_vert_angle, cos_rot_correction, sin_rot_correction;
-  float cos_rot_angle, sin_rot_angle;
-  float xy_distance;
+  const auto *raw = (const raw_packet_vls128_t *) &pkt.data[0];
+
 
   const float vel = config_.rpm * 36000.0f / 60.0f;
 
