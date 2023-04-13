@@ -395,13 +395,13 @@ private:
             // ((1 << fieldLength) - 1) << (fieldIndex - 1)
 
 
-            uint8_t  drop = 66;
-            uint8_t  retro_shadow = 66;
-            uint8_t  range_limited = 66;
-            uint8_t  retro_ghost = 66;
-            uint8_t  interference = 66;
-            uint8_t  sun = 66;
-            uint8_t  confidence = 66;
+            uint8_t  drop = 0;
+            uint8_t  retro_shadow = 0;
+            uint8_t  range_limited = 0;
+            uint8_t  retro_ghost = 0;
+            uint8_t  interference = 0;
+            uint8_t  sun = 0;
+            uint8_t  confidence = 0;
 
             if(first_return_flag)
             {
@@ -513,13 +513,13 @@ private:
                           firing_seq_in_scan,
                           laser_number,
                           first_return_flag,
-                          99,
-                          99,
-                          99,
-                          99,
-                          99,
-                          99,
-                          99);
+                          255,
+                          255,
+                          255,
+                          255,
+                          255,
+                          255,
+                          255);
         }
 
   }
