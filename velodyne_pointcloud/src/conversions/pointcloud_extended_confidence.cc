@@ -9,10 +9,10 @@ namespace velodyne_pointcloud {
                                                                const std::string &target_frame,
                                                                const std::string &fixed_frame,
                                                                const unsigned int num_lasers,
-                                                               const unsigned int scans_per_packet)
+                                                               const unsigned int points_per_packet)
                                                                : DataContainerBase(
             max_range, min_range, target_frame, fixed_frame,
-            num_lasers, 0, false, scans_per_packet, 20,
+            num_lasers, 0, false, points_per_packet, 20,
             "x", 1, sensor_msgs::PointField::FLOAT32,
             "y", 1, sensor_msgs::PointField::FLOAT32,
             "z", 1, sensor_msgs::PointField::FLOAT32,
@@ -148,7 +148,7 @@ namespace velodyne_pointcloud {
     {
         ROS_WARN_STREAM_THROTTLE(60, "Extended point cloud with CONFIDENCE (EXTENDEDCONF) is configured but received another type of return.");
         const uint64_t  off_sec_ret =
-                (1-first_return_flag) * (packets_in_scan * config_.points_per_packet);
+                (1-first_return_flag) * (packets_in_scan * config_.points_per_packet/2);
         const uint64_t  off_first_ret = ring + rotation_segment * config_.init_width;
         const uint64_t  offset = off_first_ret + off_sec_ret;
 
@@ -218,7 +218,7 @@ namespace velodyne_pointcloud {
     {
 
         const uint64_t  off_sec_ret =
-                (1-first_return_flag) * (packets_in_scan * config_.points_per_packet);
+                (1-first_return_flag) * (packets_in_scan * config_.points_per_packet/2);
         const uint64_t  off_first_ret = ring + rotation_segment * config_.init_width;
         const uint64_t  offset = off_first_ret + off_sec_ret;
 

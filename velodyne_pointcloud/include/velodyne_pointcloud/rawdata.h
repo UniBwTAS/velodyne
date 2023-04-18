@@ -200,7 +200,7 @@ public:
    */
   int setupOffline(std::string calibration_file, double max_range_, double min_range_);
 
-  void unpack(const velodyne_msgs::VelodynePacket& pkt, DataContainerBase& data,
+  void unpack(const velodyne_msgs::VelodynePacket& pkt, DataContainerBase& data_container,
               const ros::Time& scan_start_time, const size_t packet_pos_in_scan);
 
   void setParameters(double min_range, double max_range, double view_direction, double view_width);
@@ -253,10 +253,10 @@ private:
   bool buildTimings();
 
   /** add private function to handle the VLP16 **/
-  void unpack_vlp16(const velodyne_msgs::VelodynePacket& pkt, DataContainerBase& data,
+  void unpack_vlp16(const velodyne_msgs::VelodynePacket& pkt, DataContainerBase& data_container,
                     const ros::Time& scan_start_time);
 
-    void unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data,
+    void unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data_container,
                      const ros::Time& scan_start_time, const size_t packet_pos_in_scan);
 
   /** in-line test whether a point is in range */
@@ -276,7 +276,7 @@ private:
                                                      const uint8_t &laser_number,
                                                      const uint8_t &first_return_flag,
                                                      const float time,
-                                                     DataContainerBase &data,
+                                                     DataContainerBase &data_container,
                                                      const bool add_invalid = false) {
         if (!add_invalid &&
             ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
@@ -310,36 +310,36 @@ private:
             // rotation)
             const float xy_distance = distance * cos_vert_angle;
 
-            data.addPoint(xy_distance * cos_rot_angle,
-                          -(xy_distance * sin_rot_angle),
+            data_container.addPoint(xy_distance * cos_rot_angle,
+                                    -(xy_distance * sin_rot_angle),
                           distance * sin_vert_angle,
-                          corrections.laser_ring,
-                          azimuth_rot_corrected,
-                          distance,
-                          static_cast<float>(block.data[position + 2]),
-                          time,
+                                    corrections.laser_ring,
+                                    azimuth_rot_corrected,
+                                    distance,
+                                    static_cast<float>(block.data[position + 2]),
+                                    time,
                           corrections.laser_ring + calibration_.num_lasers * rotation_segment,
-                          rotation_segment,
-                          firing_seq_in_scan,
-                          laser_number,
-                          first_return_flag);
+                                    rotation_segment,
+                                    firing_seq_in_scan,
+                                    laser_number,
+                                    first_return_flag);
         } else {
             // point is outside the valid angle range
 
-            data.addPoint(nanf(""),
-                          nanf(""),
-                          nanf(""),
-                          corrections.laser_ring,
-                          azimuth_corrected,
-                          nanf(""),
-                          0.0,
-                          time,
+            data_container.addPoint(nanf(""),
+                                    nanf(""),
+                                    nanf(""),
+                                    corrections.laser_ring,
+                                    azimuth_corrected,
+                                    nanf(""),
+                                    0.0,
+                                    time,
                           corrections.laser_ring +
                           calibration_.num_lasers * rotation_segment,
-                          rotation_segment,
-                          firing_seq_in_scan,
-                          laser_number,
-                          first_return_flag);
+                                    rotation_segment,
+                                    firing_seq_in_scan,
+                                    laser_number,
+                                    first_return_flag);
         }
     }
 
@@ -354,7 +354,7 @@ private:
                                                      const uint8_t &laser_number,
                                                      const uint8_t &first_return_flag,
                                                      const float time,
-                                                     DataContainerBase &data,
+                                                     DataContainerBase &data_container,
                                                      const bool add_invalid = false) {
         if (!add_invalid &&
             ((config_.min_angle < config_.max_angle && azimuth_rot_corrected >= config_.min_angle &&
@@ -476,50 +476,50 @@ private:
 
             }
 
-            data.addPoint_with_confidence(xy_distance * cos_rot_angle,
-                          -(xy_distance * sin_rot_angle),
+            data_container.addPoint_with_confidence(xy_distance * cos_rot_angle,
+                                                    -(xy_distance * sin_rot_angle),
                           distance * sin_vert_angle,
-                          corrections.laser_ring,
-                          azimuth_rot_corrected,
-                          distance,
-                          static_cast<float>(block.data[position + 2]),
-                          time,
+                                                    corrections.laser_ring,
+                                                    azimuth_rot_corrected,
+                                                    distance,
+                                                    static_cast<float>(block.data[position + 2]),
+                                                    time,
                           corrections.laser_ring + calibration_.num_lasers * rotation_segment,
-                          rotation_segment,
-                          firing_seq_in_scan,
-                          laser_number,
-                          first_return_flag,
-                          drop,
-                          retro_shadow,
-                          range_limited,
-                          retro_ghost,
-                          interference,
-                          sun,
-                          confidence);
+                                                    rotation_segment,
+                                                    firing_seq_in_scan,
+                                                    laser_number,
+                                                    first_return_flag,
+                                                    drop,
+                                                    retro_shadow,
+                                                    range_limited,
+                                                    retro_ghost,
+                                                    interference,
+                                                    sun,
+                                                    confidence);
         } else {
             // point is outside the valid angle range
 
-            data.addPoint_with_confidence(nanf(""),
-                          nanf(""),
-                          nanf(""),
-                          corrections.laser_ring,
-                          azimuth_corrected,
-                          nanf(""),
-                          0.0,
-                          time,
+            data_container.addPoint_with_confidence(nanf(""),
+                                                    nanf(""),
+                                                    nanf(""),
+                                                    corrections.laser_ring,
+                                                    azimuth_corrected,
+                                                    nanf(""),
+                                                    0.0,
+                                                    time,
                           corrections.laser_ring +
                           calibration_.num_lasers * rotation_segment,
-                          rotation_segment,
-                          firing_seq_in_scan,
-                          laser_number,
-                          first_return_flag,
-                          255,
-                          255,
-                          255,
-                          255,
-                          255,
-                          255,
-                          255);
+                                                    rotation_segment,
+                                                    firing_seq_in_scan,
+                                                    laser_number,
+                                                    first_return_flag,
+                                                    255,
+                                                    255,
+                                                    255,
+                                                    255,
+                                                    255,
+                                                    255,
+                                                    255);
         }
 
   }

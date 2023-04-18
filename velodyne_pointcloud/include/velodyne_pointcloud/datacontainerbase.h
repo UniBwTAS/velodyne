@@ -114,9 +114,9 @@ public:
         cloud.width = config_.init_width;
     }
     else {
-        config_.points_per_packet = (12-4)*32;
-        cloud.data.resize(packets_in_scan * config_.points_per_packet * cloud.point_step * 2);
-        cloud.width = config_.init_width*2;
+        config_.points_per_packet = (12-4)*32; // 8 of 12 blocks have point data in them
+        cloud.data.resize(packets_in_scan * config_.points_per_packet * cloud.point_step );
+        cloud.width = config_.init_width;
     }
 
     cloud.height = config_.init_height;
@@ -161,7 +161,7 @@ public:
 
   const sensor_msgs::PointCloud2& finishCloud(ros::Time stamp)
   {
-    cloud.data.resize(cloud.point_step * cloud.width * cloud.height);
+//    cloud.data.resize(cloud.point_step * cloud.width * cloud.height);
 
     if (!config_.target_frame.empty())
     {

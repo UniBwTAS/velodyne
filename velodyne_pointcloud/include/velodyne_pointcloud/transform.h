@@ -86,7 +86,7 @@ private:
   boost::shared_ptr<dynamic_reconfigure::Server<velodyne_pointcloud::TransformNodeConfig>> srv_;
   void reconfigure_callback(velodyne_pointcloud::TransformNodeConfig& config, uint32_t level);
 
-  boost::shared_ptr<velodyne_rawdata::RawData> data_;
+  boost::shared_ptr<velodyne_rawdata::RawData> raw_data_ptr_;
   ros::Subscriber velodyne_scan_;
   ros::Subscriber velodyne_ethernet_msgs_;
   ros::Publisher output_;

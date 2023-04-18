@@ -29,11 +29,11 @@ namespace velodyne_pointcloud
 {
   /** @brief Constructor. */
   Transform::Transform(ros::NodeHandle node, ros::NodeHandle private_nh, std::string const & node_name):
-    data_(new velodyne_rawdata::RawData),
+          raw_data_ptr_(new velodyne_rawdata::RawData),
     first_rcfg_call(true),
     diagnostics_(node, private_nh, node_name)
   {
-    boost::optional<velodyne_pointcloud::Calibration> calibration = data_->setup(private_nh);
+    boost::optional<velodyne_pointcloud::Calibration> calibration = raw_data_ptr_->setup(private_nh);
     if(calibration)
     {
       ROS_DEBUG_STREAM("Calibration file loaded.");
@@ -82,7 +82,7 @@ namespace velodyne_pointcloud
     void Transform::reconfigure_callback(
             velodyne_pointcloud::TransformNodeConfig &config, uint32_t level) {
         ROS_INFO_STREAM("Reconfigure request.");
-        data_->setParameters(config.min_range, config.max_range,
+        raw_data_ptr_->setParameters(config.min_range, config.max_range,
                              config.view_direction, config.view_width);
         config_.sensor_frame = config.sensor_frame;
         config_.target_frame = config.target_frame;
@@ -105,14 +105,14 @@ namespace velodyne_pointcloud
                 container_ptr = boost::shared_ptr<OrganizedCloudXYZIRT>(
                         new OrganizedCloudXYZIRT(config_.max_range, config_.min_range,
                                                  config_.target_frame, config_.fixed_frame,
-                                                 config_.num_lasers, data_->pointsPerPacket()));
+                                                 config_.num_lasers, raw_data_ptr_->pointsPerPacket()));
             } else {
                 if (config_.cloud_type == XYZIRT_TYPE) {
                     ROS_INFO_STREAM("Using the XYZIRT cloud format...");
                     container_ptr =
                             boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
                                     config_.max_range, config_.min_range, config_.target_frame,
-                                    config_.fixed_frame, data_->pointsPerPacket()));
+                                    config_.fixed_frame, raw_data_ptr_->pointsPerPacket()));
                 } else {
                     if (config_.cloud_type == EXTENDED_TYPE) {
                         if (config_.num_lasers != 128) {
@@ -122,7 +122,7 @@ namespace velodyne_pointcloud
                         container_ptr =
                                 boost::shared_ptr<PointcloudExtended>(new PointcloudExtended(
                                         config_.max_range, config_.min_range, config_.target_frame,
-                                        config_.fixed_frame, config_.num_lasers, data_->pointsPerPacket()));
+                                        config_.fixed_frame, config_.num_lasers, raw_data_ptr_->pointsPerPacket()));
                     } else {
 
                         if (config_.cloud_type == EXTENDEDCONF_TYPE) {
@@ -134,7 +134,7 @@ namespace velodyne_pointcloud
                             container_ptr =
                                     boost::shared_ptr<PointcloudExtendedConfidence>(new PointcloudExtendedConfidence(
                                             config_.max_range, config_.min_range, config_.target_frame,
-                                            config_.fixed_frame, config_.num_lasers, data_->pointsPerPacket()));
+                                            config_.fixed_frame, config_.num_lasers, raw_data_ptr_->pointsPerPacket()));
                         } else {
                             ROS_ERROR("Wrong option in parameter cloud_type %s, using default type %s",
                                       config_.cloud_type.c_str(), XYZIRT_TYPE.c_str());
@@ -142,7 +142,7 @@ namespace velodyne_pointcloud
                             container_ptr =
                                     boost::shared_ptr<PointcloudXYZIRT>(new PointcloudXYZIRT(
                                             config_.max_range, config_.min_range, config_.target_frame,
-                                            config_.fixed_frame, data_->pointsPerPacket()));
+                                            config_.fixed_frame, raw_data_ptr_->pointsPerPacket()));
 
                         }
                     }
@@ -170,7 +170,7 @@ namespace velodyne_pointcloud
     if (scanMsg->packets.empty())
         return;
 
-    container_ptr->set_return_mode(data_->read_return_mode(scanMsg->packets[0]));
+    container_ptr->set_return_mode(raw_data_ptr_->read_return_mode(scanMsg->packets[0]));
 
     // allocate a point cloud with same time and frame ID as raw data
     container_ptr->setup(scanMsg);
@@ -193,7 +193,7 @@ namespace velodyne_pointcloud
         return;
       }
 
-      data_->unpack(scanMsg->packets[i], *container_ptr,
+      raw_data_ptr_->unpack(scanMsg->packets[i], *container_ptr,
                     scanMsg->header.stamp, i);
     }
     // publish the accumulated cloud message

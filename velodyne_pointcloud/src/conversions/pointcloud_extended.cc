@@ -9,10 +9,10 @@ PointcloudExtended::PointcloudExtended(
     const double max_range, const double min_range,
     const std::string& target_frame, const std::string& fixed_frame,
     const unsigned int num_lasers, // determines the width of the cloud
-    const unsigned int scans_per_packet)
+    const unsigned int points_per_packet)
     : DataContainerBase(
         max_range, min_range, target_frame, fixed_frame,
-        num_lasers, 0, false, scans_per_packet, 13,
+        num_lasers, 0, false, points_per_packet, 13,
         "x", 1, sensor_msgs::PointField::FLOAT32,
         "y", 1, sensor_msgs::PointField::FLOAT32,
         "z", 1, sensor_msgs::PointField::FLOAT32,
@@ -63,19 +63,6 @@ PointcloudExtended::PointcloudExtended(
 
   void PointcloudExtended::newLine()
   {
-//    iter_x = iter_x + config_.init_width;
-//    iter_y = iter_y + config_.init_width;
-//    iter_z = iter_z + config_.init_width;
-//    iter_distance = iter_distance + config_.init_width;
-//    iter_time = iter_time + config_.init_width;
-//    iter_sub_segment = iter_sub_segment + config_.init_width;
-//    iter_azimuth = iter_azimuth + config_.init_width;
-//    iter_rotation_segment = iter_rotation_segment + config_.init_width;
-//    iter_firing_bin = iter_firing_bin + config_.init_width;
-//    iter_intensity = iter_intensity + config_.init_width;
-//    iter_ring = iter_ring + config_.init_width;
-//    iter_laser_id = iter_laser_id + config_.init_width;
-
     ++cloud.height;
   }
 
@@ -127,7 +114,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
   {
 
     const uint64_t  off_sec_ret =
-            (1-first_return_flag) * (packets_in_scan * config_.points_per_packet);
+            (1-first_return_flag) * (packets_in_scan * config_.points_per_packet/2);
     const uint64_t  off_first_ret = ring + rotation_segment * config_.init_width;
     const uint64_t  offset = off_first_ret + off_sec_ret;
 

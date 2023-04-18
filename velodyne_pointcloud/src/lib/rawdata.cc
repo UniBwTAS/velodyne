@@ -333,7 +333,7 @@ void RawData::setupAzimuthCache()
    *  @param pkt raw packet to unpack
    *  @param pc shared pointer to point cloud (points are appended)
    */
-  void RawData::unpack(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data,
+  void RawData::unpack(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data_container,
                      const ros::Time& scan_start_time, const size_t packet_pos_in_scan)
   {
     using velodyne_pointcloud::LaserCorrection;
@@ -341,14 +341,14 @@ void RawData::setupAzimuthCache()
 
     /** special parsing for the VLS128 **/
     if (pkt.data[VLS128_MODEL_ID_POSITION] == VLS128_MODEL_ID) { // VLS 128
-      unpack_vls128(pkt, data, scan_start_time, packet_pos_in_scan);
+      unpack_vls128(pkt, data_container, scan_start_time, packet_pos_in_scan);
       return;
     }
 
     /** special parsing for the VLP16 **/
     if (calibration_.num_lasers == 16)
     {
-      unpack_vlp16(pkt, data, scan_start_time);
+      unpack_vlp16(pkt, data_container, scan_start_time);
       return;
     }
 
@@ -399,7 +399,7 @@ void RawData::setupAzimuthCache()
           if (tmp.uint == 0) // no valid laser beam return
           {
             // call to addPoint is still required since output could be organized
-            data.addPoint(nanf(""), nanf(""), nanf(""), corrections.laser_ring, raw->blocks[i].rotation, nanf(""), nanf(""), time);
+            data_container.addPoint(nanf(""), nanf(""), nanf(""), corrections.laser_ring, raw->blocks[i].rotation, nanf(""), nanf(""), time);
             continue;
           }
 
@@ -501,10 +501,10 @@ void RawData::setupAzimuthCache()
           intensity = (intensity < min_intensity) ? min_intensity : intensity;
           intensity = (intensity > max_intensity) ? max_intensity : intensity;
 
-          data.addPoint(x_coord, y_coord, z_coord, corrections.laser_ring, raw->blocks[i].rotation, distance, intensity, time);
+          data_container.addPoint(x_coord, y_coord, z_coord, corrections.laser_ring, raw->blocks[i].rotation, distance, intensity, time);
         }
       }
-      data.newLine();
+      data_container.newLine();
     }
   }
 
@@ -526,7 +526,7 @@ unsigned int RawData::read_return_mode(const velodyne_msgs::VelodynePacket& pkt)
  *  @param pkt raw packet to unpack
  *  @param pc shared pointer to point cloud (points are appended)
  */
-void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data,
+void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data_container,
                             const ros::Time& scan_start_time, const size_t packet_pos_in_scan) {
   float azimuth_diff, azimuth_corrected_f, azimuth_rot_corrected_f;
   float last_azimuth_diff = 0;
@@ -574,7 +574,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
       float third_random_rest_estimate = 0.0f;
 
       // number of firing sequences in this scan
-      int num_firing_sequences_in_one_scan = std::floor(BLOCKS_PER_PACKET/VLS128_BLOCKS_PER_FIRING_SEQ) * data.packetsInScan();
+      int num_firing_sequences_in_one_scan = std::floor(BLOCKS_PER_PACKET/VLS128_BLOCKS_PER_FIRING_SEQ) * data_container.packetsInScan();
 
       // Parse the blocks
       for (int block = 0;
@@ -678,7 +678,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
 
           }
 
-          // Parse the data points
+          // Parse the data_container points
           for (int j = 0, k = 0; j < POINTS_PER_BLOCK; j++, k += RAW_POINT_SIZE) {
 
               laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
@@ -724,12 +724,12 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                       laser_number,
                       1,
                       point_time,
-                      data);
+                      data_container);
           }
 
           if ((block + 1) % VLS128_BLOCKS_PER_FIRING_SEQ ==
               0) //add a new line every 4 blocks (one firing for each of the 128 lasers)
-              data.newLine();
+              data_container.newLine();
       }
   }
   else
@@ -737,7 +737,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
       if(current_return_mode == VLS128_RETURN_MODE_DUAL || current_return_mode == VLS128_RETURN_MODE_DUAL_CONF)
       {
           // number of firing sequences in this scan
-          int num_firing_sequences_in_one_scan = data.packetsInScan();
+          int num_firing_sequences_in_one_scan = data_container.packetsInScan();
 
           const int move_offset_for_blocks = current_return_mode == VLS128_RETURN_MODE_DUAL?2:3;
           // Parse the blocks
@@ -780,7 +780,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   azimuth_diff = 0;
               azimuth_previous_packet = azimuth;
 
-              // Parse the data points
+              // Parse the data_container points
 
               for (int j = 0, k = 0; j < POINTS_PER_BLOCK; j++, k += RAW_POINT_SIZE)
               {
@@ -835,7 +835,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               laser_number,
                               1,
                               point_time,
-                              data);
+                              data_container);
 
 
                       calculate_and_add_point_to_container(
@@ -849,7 +849,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               laser_number,
                               0,
                               point_time,
-                              data,
+                              data_container,
                               add_invalid);
                   }
                   else
@@ -876,7 +876,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               laser_number,
                               1,
                               point_time,
-                              data);
+                              data_container);
 
                       calculate_and_add_point_and_confidence_to_container(
                               second_ret_block,
@@ -890,14 +890,14 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               laser_number,
                               0,
                               point_time,
-                              data,
+                              data_container,
                               add_invalid);
                   }
               }
           }
           //add 2 new lines after parsing this package (two firings for each of the 128 lasers)
-          data.newLine();
-          data.newLine();
+          data_container.newLine();
+          data_container.newLine();
       }
       else
       {
@@ -914,7 +914,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
    *  @param pkt raw packet to unpack
    *  @param pc shared pointer to point cloud (points are appended)
    */
-  void RawData::unpack_vlp16(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data, const ros::Time& scan_start_time)
+  void RawData::unpack_vlp16(const velodyne_msgs::VelodynePacket &pkt, DataContainerBase& data_container, const ros::Time& scan_start_time)
   {
     float azimuth;
     float azimuth_diff;
@@ -954,7 +954,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
 	    if(last_azimuth_diff > 0){
 	      azimuth_diff = last_azimuth_diff;
 	    }
-	    // otherwise we are not able to use this data
+	    // otherwise we are not able to use this data_container
 	    // TODO: we might just not use the second 16 firings
 	    else{
 	      continue;
@@ -1087,10 +1087,10 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
             if (timing_offsets.size())
               time = timing_offsets[block][firing * 16 + dsr] + time_diff_start_to_this_packet;
 
-            data.addPoint(x_coord, y_coord, z_coord, corrections.laser_ring, azimuth_corrected, distance, intensity, time);
+            data_container.addPoint(x_coord, y_coord, z_coord, corrections.laser_ring, azimuth_corrected, distance, intensity, time);
           }
         }
-        data.newLine();
+        data_container.newLine();
       }
     }
   }

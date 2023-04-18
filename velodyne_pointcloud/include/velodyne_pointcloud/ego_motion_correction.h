@@ -52,5 +52,6 @@ class EgoMotionCorrection
     sensor_msgs::PointCloud2Ptr output_msg_;
     int num_firings_{};
     int num_rings_{};
+    std::string logger_name{"ego_motion_correction_log"};
 };
 } // namespace velodyne_pointcloud

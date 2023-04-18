@@ -59,7 +59,7 @@ void EgoMotionCorrection::callbackPointCloud(const sensor_msgs::PointCloud2::Con
         }
     }
     std::chrono::duration<double> exec_dur_look_up = std::chrono::steady_clock::now() - exec_start_look_up;
-    std::cout << "Time look_up: " << std::fixed << exec_dur_look_up.count() << std::setprecision(5) << std::endl;
+    ROS_INFO_STREAM_NAMED(logger_name, "Time look_up: " << std::fixed << exec_dur_look_up.count() << std::setprecision(5) );
 
     // copy untransformed message (allocate new shared pointers for zero-copy sharing with other nodelets)
     output_msg_.reset(new sensor_msgs::PointCloud2);
@@ -97,16 +97,17 @@ void EgoMotionCorrection::callbackPointCloud(const sensor_msgs::PointCloud2::Con
     auto exec_start_transformAndFill = std::chrono::steady_clock::now();
     thread_pool_.shareWork(num_firings_, &EgoMotionCorrection::transformAndFill, this);
     std::chrono::duration<double> exec_dur_transformAndFill = std::chrono::steady_clock::now() - exec_start_transformAndFill;
-    std::cout << "Time transformAndFill: " << std::fixed << exec_dur_transformAndFill.count() << std::setprecision(5) << std::endl;
+    ROS_INFO_STREAM_NAMED(logger_name, "Time transformAndFill: " << std::fixed << exec_dur_transformAndFill.count() << std::setprecision(5));
 
     pc_pub_.publish(output_msg_);
 
     std::chrono::duration<double> exec_dur_total = std::chrono::steady_clock::now() - exec_start_total;
-    std::cout << "Time total: " << std::fixed << exec_dur_total.count() << std::setprecision(5) << std::endl;
+    ROS_INFO_STREAM_NAMED(logger_name, "Time total: " << std::fixed << exec_dur_total.count() << std::setprecision(5) );
 }
 
 void EgoMotionCorrection::transformAndFill(int start_firing_idx, int end_firing_idx)
 {
+
     // get output iterators
     sensor_msgs::PointCloud2Iterator<float> iter_x_out(*output_msg_, "x");
     sensor_msgs::PointCloud2Iterator<float> iter_y_out(*output_msg_, "y");
@@ -136,9 +137,9 @@ void EgoMotionCorrection::transformAndFill(int start_firing_idx, int end_firing_
             std::memcpy(&output_msg_->data[offset_dst], &input_msg_->data[offset_src], input_msg_->point_step);
 
             // transform point and assign it
-            float x = *iter_x_out;
-            float y = *iter_y_out;
-            float z = *iter_z_out;
+            const float x = *iter_x_out;
+            const float y = *iter_y_out;
+            const float z = *iter_z_out;
             float dt = *iter_time_out;
             if (point_stamp_in_ns_)
               dt = static_cast<float>(*reinterpret_cast<uint32_t *>(&dt) / 1e9);
@@ -155,7 +156,7 @@ void EgoMotionCorrection::transformAndFill(int start_firing_idx, int end_firing_
                     ROS_WARN("No transform precalculated for this stamp!");
                     tf_idx = static_cast<int>(lut_tfs.size()) - 1;
                 }
-                tf2::Transform t = lut_tfs[tf_idx];
+                const tf2::Transform t = lut_tfs[tf_idx];
                 tf2::Vector3 v(x, y, z);
 
                 v = t * v;
