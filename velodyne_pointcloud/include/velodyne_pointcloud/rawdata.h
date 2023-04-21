@@ -61,12 +61,23 @@ namespace velodyne_rawdata
  * Raw Velodyne packet constants and structures.
  */
 static const int SIZE_BLOCK = 100;
-static const int RAW_POINT_SIZE = 3;
-static const int POINTS_PER_BLOCK = 32;
-static const int BLOCK_DATA_SIZE = (POINTS_PER_BLOCK * RAW_POINT_SIZE);
 
 static const float ROTATION_RESOLUTION = 0.01f;     // [deg]
 static const uint16_t ROTATION_MAX_UNITS = 36000u;  // [deg/100]
+
+static const int  PACKET_SIZE = 1206;
+static const int  BLOCKS_PER_PACKET = 12;
+static const int  PACKET_STATUS_SIZE = 4;
+static const int  RAW_POINT_SIZE=  3; // A data point has a size of 3 bytes
+static const int  AZIMUTH_SIZE=  2; // The azimuth per data block has size 2
+static const int  FLAG_SIZE=  2; // The flag per data block has size 2
+static const int  TIMESTAMP_SIZE=  4; // The time stamp data block has size 4
+static const int  RETURN_MODE_BYTE_SIZE=  1; // The return mode is 1 byte
+static const int  MODEL_BYTE_SIZE=  1; // The model id is 1 byte
+static const int  POINTS_PER_BLOCK=  32; // A block has 32 data points
+static const int  BLOCK_SIZE=  FLAG_SIZE+AZIMUTH_SIZE+(POINTS_PER_BLOCK*RAW_POINT_SIZE); // A block of data consist on a flag, an azimuth and 32 data points
+static const int  BLOCK_DATA_SIZE = (POINTS_PER_BLOCK * RAW_POINT_SIZE);
+static const int  POINTS_PER_PACKET = (POINTS_PER_BLOCK * BLOCKS_PER_PACKET);
 
 /** @todo make this work for both big and little-endian machines */
 static const uint16_t UPPER_BANK = 0xeeff;
@@ -105,10 +116,6 @@ union two_bytes
   uint8_t bytes[2];
 };
 
-static const int PACKET_SIZE = 1206;
-static const int BLOCKS_PER_PACKET = 12;
-static const int PACKET_STATUS_SIZE = 4;
-static const int POINTS_PER_PACKET = (POINTS_PER_BLOCK * BLOCKS_PER_PACKET);
 
 /** Special Definitions for VLS128 support **/
 // These are used to detect which bank of 32 lasers is in this block
@@ -130,6 +137,9 @@ static const int VLS128_RETURN_MODE_DUAL= 57;
 static const int VLS128_RETURN_MODE_DUAL_CONF= 59;
 static const int VLS128_RETURN_MODE_POSITION= 1204;
 static const int VLS128_MODEL_ID_POSITION= 1205;
+
+    static const float  PACKET_RATE_SINGLE_RET_MODE  = 6030.5;
+    static const float  PACKET_RATE_DUAL_RET_MODE  = 18091.36;
 
 
 /** \brief Raw Velodyne packet.

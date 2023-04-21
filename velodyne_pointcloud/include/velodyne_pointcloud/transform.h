@@ -64,6 +64,7 @@ static const std::string  ORGANIZED_TYPE = "ORGANIZED";
 static const std::string  EXTENDED_TYPE  = "EXTENDED";
 static const std::string  EXTENDEDCONF_TYPE  = "EXTENDEDCONF";
 
+
 using TransformNodeCfg = velodyne_pointcloud::TransformNodeConfig;
 
 class Transform
@@ -91,6 +92,7 @@ private:
   ros::Subscriber velodyne_ethernet_msgs_;
   ros::Publisher output_;
   ros::Publisher output_ret_mode_;
+  uint16_t scan_first_azimuth{0};
 
   /// configuration parameters
   typedef struct
@@ -117,6 +119,12 @@ private:
   double diag_max_freq_;
   boost::shared_ptr<diagnostic_updater::TopicDiagnostic> diag_topic_;
   boost::mutex reconfigure_mtx_;
+
+  int _npackets;
+  int _cut_angle;
+  int _last_azimuth{-1};
+  bool _first_rotation{true};
+  double _rpm{600.0};
 };
 }  // namespace velodyne_pointcloud
 

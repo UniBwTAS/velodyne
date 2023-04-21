@@ -77,6 +77,32 @@ namespace velodyne_pointcloud
                                                                0.1, 10),
                                           TimeStampStatusParam()));
 
+
+
+      double cut_angle;
+      private_nh.param("cut_angle", cut_angle, M_PI);
+      if (cut_angle < 0.0) {
+          ROS_INFO_STREAM("Cut at specific angle feature deactivated.");
+      } else if (cut_angle < (2 * M_PI)) {
+          ROS_INFO_STREAM("Cut at specific angle feature activated. "
+                          "Cutting velodyne points always at " << cut_angle << " rad.");
+      } else {
+          ROS_ERROR_STREAM("cut_angle parameter is out of range. Allowed range is "
+                            << "between 0.0 and 2*PI or negative values to deactivate this feature.");
+          cut_angle = -0.01;
+      }
+
+      // Convert cut_angle from radian to one-hundredth degree,
+      // which is used in velodyne packets
+      _cut_angle = int((cut_angle * 360 / (2 * M_PI)) * 100);
+
+
+      if (! private_nh.param("rpm", _rpm))
+      {
+          _rpm = 600.0;
+          ROS_ERROR("No Velodyne RPM specified using default %f!", _rpm);
+      }
+
   }
 
     void Transform::reconfigure_callback(
@@ -209,53 +235,95 @@ namespace velodyne_pointcloud
   }
 
 
-  void
-    Transform::processEthernetMsgs(const ethernet_msgs::PacketConstPtr &ethernet_msg)
-  {
-     if (output_.getNumSubscribers() == 0)      // no one listening?
-       return;                                  // avoid much work
+    void
+    Transform::processEthernetMsgs(const ethernet_msgs::PacketConstPtr &ethernet_msg) {
+        if (output_.getNumSubscribers() == 0)      // no one listening?
+            return;                                  // avoid much work
 
-    // global vector to buffer several ethernet_msg:
-    static std::shared_ptr<std::vector<ethernet_msgs::PacketConstPtr>> vec_ethernet_msgs = std::make_shared<std::vector<ethernet_msgs::PacketConstPtr>>();
+        // global vector to buffer several ethernet_msg:
+        static std::shared_ptr<std::vector<ethernet_msgs::PacketConstPtr>>
+                vec_ethernet_msgs = std::make_shared<std::vector<ethernet_msgs::PacketConstPtr>>();
 
-    uint16_t current_angle = 0; // 0...36000
-    std::memcpy( &current_angle, &ethernet_msg->payload[ 2 ], 2 );
+        // a packet contains data from 3 azimuth angles  use the biggest (last four blocks) in single ret in double all the azimuths are the same
+        std::size_t azimuth_data_pos = velodyne_rawdata::BLOCK_SIZE * 8 + velodyne_rawdata::FLAG_SIZE;
+        uint16_t azimuth = 0; // 0...36000
+        std::memcpy(&azimuth, &ethernet_msg->payload[azimuth_data_pos], velodyne_rawdata::AZIMUTH_SIZE);
 
-    static bool is_new_revolution = true;
-    if(current_angle < 9000)
-    {
-        is_new_revolution = true;
-    }
-    if(is_new_revolution && current_angle > 18000)
-    {
-        is_new_revolution = false;
-
-        velodyne_msgs::VelodyneScanPtr scan(new velodyne_msgs::VelodyneScan);
-        scan->packets.reserve(vec_ethernet_msgs->size());
-
-        for(ethernet_msgs::PacketConstPtr& msg: *vec_ethernet_msgs)
-        {
-            velodyne_msgs::VelodynePacket tmp_packet;
-            std::memcpy( &tmp_packet.data, &msg->payload[ 0 ], msg->payload.size() );
-            tmp_packet.stamp = msg->header.stamp;
-            scan->packets.push_back(tmp_packet);
+        if (_last_azimuth == -1) {
+            _last_azimuth = azimuth;
+            return;
         }
 
-        if(!vec_ethernet_msgs->empty())
-        {
-            scan->header.stamp = vec_ethernet_msgs->front()->header.stamp;
-            scan->header.frame_id = config_.sensor_frame;
+        if ((_last_azimuth < _cut_angle && _cut_angle <= azimuth) ||
+            (azimuth < _last_azimuth && _cut_angle <= azimuth) ||
+            (azimuth < _last_azimuth && _last_azimuth < _cut_angle)) {
 
-          // publish the pointcloud2
-          processScan(scan);
+            if (_first_rotation) { // discard the first accumulation of packets as it
+                // does not build a complete rotation
+                _first_rotation = false;
+                ROS_INFO("Discard first incomplete scan expected packets %i, polled "
+                         "packets %li",
+                         _npackets, vec_ethernet_msgs->size());
+                vec_ethernet_msgs->clear();
+                _last_azimuth = azimuth;
+
+                return;
+            }
+            // get if the packet is single or double return
+
+            std::size_t ret_mode_data_pos = velodyne_rawdata::BLOCK_SIZE * velodyne_rawdata::BLOCKS_PER_PACKET + velodyne_rawdata::TIMESTAMP_SIZE;
+            uint8_t mode = 0; // 55 .. 58
+            std::memcpy(&mode, &ethernet_msg->payload[ret_mode_data_pos], velodyne_rawdata::RETURN_MODE_BYTE_SIZE);
+
+
+            const double frequency = (_rpm / 60.0);
+            if (mode == velodyne_rawdata::VLS128_RETURN_MODE_STRONGEST || mode == velodyne_rawdata::VLS128_RETURN_MODE_LAST)
+                _npackets = (int) ceil(velodyne_rawdata::PACKET_RATE_SINGLE_RET_MODE / frequency); // packets per rev
+            else
+                _npackets = (int) ceil(velodyne_rawdata::PACKET_RATE_DUAL_RET_MODE / frequency); // packets per rev
+
+
+            // Cut angle passed, one full revolution collected
+            velodyne_msgs::VelodyneScanPtr scan(new velodyne_msgs::VelodyneScan);
+            scan->packets.reserve(_npackets);
+
+            // if the starting angle for the current polled packages is still bigger than the current azimuth include this package in the scan
+            bool omit_package = false;
+            if (scan_first_azimuth > azimuth) {
+                vec_ethernet_msgs->push_back(ethernet_msg);
+                omit_package = true;
+            }
+
+            for (ethernet_msgs::PacketConstPtr &msg: *vec_ethernet_msgs) {
+                velodyne_msgs::VelodynePacket tmp_packet;
+                std::memcpy(&tmp_packet.data, &msg->payload[0], msg->payload.size());
+                tmp_packet.stamp = msg->header.stamp;
+                scan->packets.push_back(tmp_packet);
+            }
+            if (!vec_ethernet_msgs->empty()) {
+                scan->header.stamp = vec_ethernet_msgs->front()->header.stamp;
+                scan->header.frame_id = config_.sensor_frame;
+                // publish the pointcloud2
+                processScan(scan);
+            }
+
+            // delete the buffer
+            vec_ethernet_msgs->clear();
+
+            if (omit_package) {
+                _last_azimuth = azimuth;
+                return;
+            }
+        }
+        _last_azimuth = azimuth;
+
+        //store the first azimuth for the scan
+        if (vec_ethernet_msgs->empty()) {
+            scan_first_azimuth = azimuth;
         }
 
-        // delete the buffer
-        vec_ethernet_msgs->clear();
+        // adding to global accumulator
+        vec_ethernet_msgs->push_back(ethernet_msg);
     }
-
-    // adding to global accumulator
-    vec_ethernet_msgs->push_back(ethernet_msg);
-  }
 
 } // namespace velodyne_pointcloud
