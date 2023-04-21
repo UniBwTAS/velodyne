@@ -200,7 +200,7 @@ inline float SQR(float val) { return val*val; }
           firingGroupIndex = y;
           timing_offsets[x][y] = (full_firing_cycle * sequenceIndex) + (single_firing * firingGroupIndex)
                   - offset_paket_time + (duration_rest_period*(firingGroupIndex>7?1:0));
-          ROS_DEBUG(" firing_seque %lu firing_group %lu offset %f",x,y,timing_offsets[x][y]);
+          ROS_DEBUG(" firing_sequence %lu firing_group %lu offset %f",x,y,timing_offsets[x][y]);
         }
       }
     }
@@ -537,7 +537,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
 
   const float vel = config_.rpm * 36000.0f / 60.0f;
 
-  // time from the arrival of the first packet in the scan (this only works if time stamp first packes ids configured)
+  // time from the arrival of the first packet in the scan (this only works if "time stamp first packet" is configured)
   // to the arrival of the current packet
   float time_diff_scan_start_to_this_packet = (pkt.stamp - scan_start_time).toSec();
 
@@ -637,9 +637,9 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
               // estimate the first random rest time using the difference between the azimuths of the first and
               // second firing seq
               first_random_rest_estimate = (azimuth_diff / vel) - (VLS128_SEQ_TDURATION * 1e-6);
-
+              
               time_to_cover_azimuth_diff = first_random_rest_estimate +
-                                           (VLS128_TOH_ADJUSTMENT * 1e-6);
+                                           (VLS128_SEQ_TDURATION * 1e-6);
           }
           else
           {
@@ -656,7 +656,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   second_random_rest_estimate = (azimuth_diff / vel) - (VLS128_SEQ_TDURATION * 1e-6);
 
                   time_to_cover_azimuth_diff = second_random_rest_estimate +
-                                               (VLS128_TOH_ADJUSTMENT * 1e-6);
+                                               (VLS128_SEQ_TDURATION * 1e-6);
 
               } else {
 
@@ -672,7 +672,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   third_random_rest_estimate = 1.941 * 1e-6;
 
                   time_to_cover_azimuth_diff = third_random_rest_estimate +
-                                               (VLS128_TOH_ADJUSTMENT * 1e-6);
+                                               (VLS128_SEQ_TDURATION * 1e-6);
 
               }
 
