@@ -23,6 +23,7 @@
 #include <velodyne_pointcloud/organized_cloudXYZIRT.h>
 #include <velodyne_pointcloud/pointcloudXYZIRT.h>
 #include <velodyne_pointcloud/pointcloud_extended.h>
+#include <velodyne_pointcloud/streaming_cloudXYZIRT.h>
 
 namespace velodyne_pointcloud
 {
@@ -99,6 +100,12 @@ namespace velodyne_pointcloud
       first_rcfg_call = false;
       config_.cloud_type = config.cloud_type;
 
+      if (config_.cloud_type == STREAMING_TYPE)
+      {
+          ROS_INFO_STREAM("Using the streaming cloud format...");
+          container_ptr = boost::shared_ptr<StreamingCloudXYZIRT>(
+              new StreamingCloudXYZIRT(&output_, config_.sensor_frame, config_.num_lasers));
+      } else
       if(config_.cloud_type == ORGANIZED_TYPE)
       {
         ROS_INFO_STREAM("Using the organized cloud format...");
@@ -197,7 +204,23 @@ namespace velodyne_pointcloud
     Transform::processEthernetMsgs(const ethernet_msgs::PacketConstPtr &ethernet_msg)
   {
      if (output_.getNumSubscribers() == 0)      // no one listening?
-       return;                                  // avoid much work
+       return;                              // avoid much work
+
+     if (config_.cloud_type == STREAMING_TYPE)
+     {
+         // pass packet timestamp to container
+         boost::dynamic_pointer_cast<StreamingCloudXYZIRT>(container_ptr)->setPacketStamp(ethernet_msg->header.stamp);
+
+         // create dummy velodyne packet in order to use unpack function
+         velodyne_msgs::VelodynePacket tmp_packet;
+         std::memcpy(&tmp_packet.data, &ethernet_msg->payload[0], ethernet_msg->payload.size());
+         tmp_packet.stamp = ethernet_msg->header.stamp;
+
+         // only the time diff since packet stamp is calculated and has to added to packet stamp (passed above) later
+         data_->unpack(tmp_packet, *container_ptr, ethernet_msg->header.stamp, 0);
+
+         return;
+     }
 
     // global vector to buffer several ethernet_msg:
     static std::shared_ptr<std::vector<ethernet_msgs::PacketConstPtr>> vec_ethernet_msgs = std::make_shared<std::vector<ethernet_msgs::PacketConstPtr>>();
