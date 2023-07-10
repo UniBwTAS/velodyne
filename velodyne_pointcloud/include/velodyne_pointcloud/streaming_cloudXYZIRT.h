@@ -42,7 +42,10 @@ namespace velodyne_pointcloud
 class StreamingCloudXYZIRT : public velodyne_rawdata::DataContainerBase
 {
   public:
-    StreamingCloudXYZIRT(ros::Publisher* pub, const std::string& sensor_frame, unsigned int num_lasers);
+    StreamingCloudXYZIRT(ros::Publisher* pub,
+                         const std::string& sensor_frame,
+                         unsigned int num_accumulated_firings,
+                         unsigned int num_lasers);
 
     virtual void newLine();
 
@@ -58,12 +61,13 @@ class StreamingCloudXYZIRT : public velodyne_rawdata::DataContainerBase
     void setPacketStamp(ros::Time packet_stamp);
 
   private:
-    sensor_msgs::PointCloud2Iterator<float> iter_x, iter_y, iter_z, iter_intensity;
+    sensor_msgs::PointCloud2Iterator<float> iter_x, iter_y, iter_z, iter_distance, iter_azimuth, iter_intensity;
     sensor_msgs::PointCloud2Iterator<uint16_t> iter_row_index;
     sensor_msgs::PointCloud2Iterator<uint32_t> iter_time_sec, iter_time_nsec, iter_firing_index;
     ros::Publisher* pub;
     ros::Time cur_packet_stamp;
-    uint32_t firing_index{0};  // TODO
+    int local_firing_index{0};
+    uint32_t global_firing_index{0};
 };
 } /* namespace velodyne_pointcloud */
 #endif // VELODYNE_POINTCLOUD_STREAMING_CLOUDXYZIRT_H

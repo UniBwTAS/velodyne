@@ -45,7 +45,7 @@ namespace velodyne_pointcloud
     }
 
     // advertise output point cloud (before subscribing to input data)
-    output_ = node.advertise<sensor_msgs::PointCloud2>("velodyne_points", 10);
+    output_ = node.advertise<sensor_msgs::PointCloud2>("velodyne_points", 10000);
 
     srv_ = boost::make_shared<dynamic_reconfigure::Server<TransformNodeCfg>> (private_nh);
     dynamic_reconfigure::Server<TransformNodeCfg>::CallbackType f;
@@ -104,7 +104,7 @@ namespace velodyne_pointcloud
       {
           ROS_INFO_STREAM("Using the streaming cloud format...");
           container_ptr = boost::shared_ptr<StreamingCloudXYZIRT>(
-              new StreamingCloudXYZIRT(&output_, config_.sensor_frame, config_.num_lasers));
+              new StreamingCloudXYZIRT(&output_, config_.sensor_frame, 40, config_.num_lasers));
       } else
       if(config_.cloud_type == ORGANIZED_TYPE)
       {
