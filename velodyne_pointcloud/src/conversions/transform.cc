@@ -104,7 +104,7 @@ namespace velodyne_pointcloud
       {
           ROS_INFO_STREAM("Using the streaming cloud format...");
           container_ptr = boost::shared_ptr<StreamingCloudXYZIRT>(
-              new StreamingCloudXYZIRT(&output_, config_.sensor_frame, 40, config_.num_lasers));
+              new StreamingCloudXYZIRT(&output_, config_.sensor_frame, 50, config_.num_lasers));
       } else
       if(config_.cloud_type == ORGANIZED_TYPE)
       {
