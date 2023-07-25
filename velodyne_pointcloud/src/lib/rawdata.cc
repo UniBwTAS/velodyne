@@ -235,7 +235,7 @@ inline float SQR(float val) { return val*val; }
       ROS_ERROR("No Velodyne Sensor Model specified using default %s!", config_.model.c_str());
 
     }
-      if (! private_nh.param("rpm", config_.rpm))
+      if (! private_nh.getParam("rpm", config_.rpm))
       {
           config_.rpm = 600.0;
           ROS_ERROR("No Velodyne RPM specified using default %f!", config_.rpm);
