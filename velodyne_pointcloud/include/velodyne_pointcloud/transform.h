@@ -105,6 +105,7 @@ private:
     double max_range;          ///< maximum range to publish
     double min_range;          ///< minimum range to publish
     uint16_t num_lasers;       ///< number of lasers
+    std::string model;         ///< name of the sensor model
   }
   Config;
   Config config_;

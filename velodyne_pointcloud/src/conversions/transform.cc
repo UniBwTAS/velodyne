@@ -34,6 +34,7 @@ namespace velodyne_pointcloud
     diagnostics_(node, private_nh, node_name)
   {
     boost::optional<velodyne_pointcloud::Calibration> calibration = raw_data_ptr_->setup(private_nh);
+    config_.model = raw_data_ptr_->get_sensor_model();
     if(calibration)
     {
       ROS_DEBUG_STREAM("Calibration file loaded.");
@@ -97,7 +98,7 @@ namespace velodyne_pointcloud
       _cut_angle = int((cut_angle * 360 / (2 * M_PI)) * 100);
 
 
-      if (! private_nh.param("rpm", _rpm))
+      if (! private_nh.getParam("rpm", _rpm))
       {
           _rpm = 600.0;
           ROS_ERROR("No Velodyne RPM specified using default %f!", _rpm);
@@ -141,7 +142,7 @@ namespace velodyne_pointcloud
                                     config_.fixed_frame, raw_data_ptr_->pointsPerPacket()));
                 } else {
                     if (config_.cloud_type == EXTENDED_TYPE) {
-                        if (config_.num_lasers != 128) {
+                        if (config_.model != velodyne_rawdata::VLS128) {
                             ROS_ERROR_STREAM("Using the Extended cloud format with wrong model, only VLS128!");
                         }
                         ROS_INFO_STREAM("Using the Extended cloud format...");
@@ -153,7 +154,7 @@ namespace velodyne_pointcloud
 
                         if (config_.cloud_type == EXTENDEDCONF_TYPE) {
 
-                            if (config_.num_lasers != 128) {
+                            if (config_.model != velodyne_rawdata::VLS128) {
                                 ROS_ERROR_STREAM("Using the Extended cloud format with wrong model, only VLS128!");
                             }
                             ROS_INFO_STREAM("Using the Extended cloud format with confidence information...");
@@ -196,8 +197,13 @@ namespace velodyne_pointcloud
     if (scanMsg->packets.empty())
         return;
 
-    container_ptr->set_return_mode(raw_data_ptr_->read_return_mode(scanMsg->packets[0]));
+    const int return_mode = raw_data_ptr_->read_return_mode(scanMsg->packets[0]);
 
+    container_ptr->set_return_mode(return_mode);
+    if (config_.model != velodyne_rawdata::VLS128 && (return_mode != velodyne_rawdata::VLS128_RETURN_MODE_LAST &&
+            return_mode != velodyne_rawdata::VLS128_RETURN_MODE_STRONGEST) ) {
+        ROS_ERROR_STREAM("Using double return mode with a sensor model that is not implemented, only use double return mode with the VLS128!");
+    }
     // allocate a point cloud with same time and frame ID as raw data
     container_ptr->setup(scanMsg);
 

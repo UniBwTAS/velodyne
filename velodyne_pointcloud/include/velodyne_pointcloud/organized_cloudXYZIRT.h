@@ -44,7 +44,7 @@ class OrganizedCloudXYZIRT : public velodyne_rawdata::DataContainerBase
 public:
   OrganizedCloudXYZIRT(const double max_range, const double min_range, const std::string& target_frame,
                        const std::string& fixed_frame, const unsigned int num_lasers,
-                       const unsigned int points_per_block);
+                       const unsigned int points_per_packet);
 
   virtual void newLine();
 

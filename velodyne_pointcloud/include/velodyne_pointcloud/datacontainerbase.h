@@ -42,6 +42,7 @@
 #include <string>
 #include <algorithm>
 #include <cstdarg>
+#include "rawdata.h"
 
 namespace velodyne_rawdata
 {
@@ -108,13 +109,15 @@ public:
     packets_in_scan = scan_msg->packets.size();
     cloud.header.stamp = scan_msg->header.stamp;
     cloud.data.clear();
-    if(last_return_mode == 55 || last_return_mode == 56) {
-        config_.points_per_packet = 12 * 32;
+
+    if(last_return_mode == VLS128_RETURN_MODE_STRONGEST || last_return_mode == VLS128_RETURN_MODE_LAST) {
+        config_.points_per_packet = BLOCKS_PER_PACKET * POINTS_PER_BLOCK;
         cloud.data.resize(packets_in_scan * config_.points_per_packet * cloud.point_step);
         cloud.width = config_.init_width;
     }
     else {
-        config_.points_per_packet = (12-4)*32; // 8 of 12 blocks have point data in them
+        // Todo: This is only valid for the vls128
+        config_.points_per_packet = (BLOCKS_PER_PACKET-4)*POINTS_PER_BLOCK; // 8 of 12 blocks have point data in them
         cloud.data.resize(packets_in_scan * config_.points_per_packet * cloud.point_step );
         cloud.width = config_.init_width;
     }

@@ -42,7 +42,7 @@ class PointcloudXYZIRT : public velodyne_rawdata::DataContainerBase
 {
 public:
   PointcloudXYZIRT(const double max_range, const double min_range, const std::string& target_frame,
-                   const std::string& fixed_frame, const unsigned int points_per_block);
+                   const std::string& fixed_frame, const unsigned int points_per_packet);
 
   virtual void newLine();
 

@@ -80,7 +80,7 @@ inline float SQR(float val) { return val*val; }
 
   int RawData::pointsPerPacket() const
   {
-    if( calibration_.num_lasers == 16)
+    if( config_.model == VLP16)
     {
       return BLOCKS_PER_PACKET * VLP16_FIRINGS_PER_BLOCK *
           VLP16_SCANS_PER_FIRING;
@@ -98,7 +98,7 @@ inline float SQR(float val) { return val*val; }
    */
   bool RawData::buildTimings(){
     // vlp16
-    if (config_.model == "VLP16"){
+    if (config_.model == VLP16){
       // timing table calculation, from velodyne user manual
       timing_offsets.resize(12);
       for (size_t i=0; i < timing_offsets.size(); ++i){
@@ -125,7 +125,7 @@ inline float SQR(float val) { return val*val; }
       }
     }
     // vlp32
-    else if (config_.model == "32C"){
+    else if (config_.model == V32C){
       // timing table calculation, from velodyne user manual
       timing_offsets.resize(12);
       for (size_t i=0; i < timing_offsets.size(); ++i){
@@ -151,7 +151,7 @@ inline float SQR(float val) { return val*val; }
       }
     }
     // hdl32
-    else if (config_.model == "32E"){
+    else if (config_.model == V32E){
       // timing table calculation, from velodyne user manual
       timing_offsets.resize(12);
       for (size_t i=0; i < timing_offsets.size(); ++i){
@@ -176,7 +176,7 @@ inline float SQR(float val) { return val*val; }
         }
       }
     }
-    else if (config_.model == "VLS128"){
+    else if (config_.model == VLS128){
         // Only the timing offsets of the first firing sequence can be calculated beforehand, as
         // after firmware update there is a variable rest period after each firing sequence
         // to avoid interference from other sensors
@@ -346,7 +346,7 @@ void RawData::setupAzimuthCache()
     }
 
     /** special parsing for the VLP16 **/
-    if (calibration_.num_lasers == 16)
+    if (config_.model == VLP16)
     {
       unpack_vlp16(pkt, data_container, scan_start_time);
       return;
@@ -1093,6 +1093,17 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
               time = timing_offsets[block][firing * 16 + dsr] + time_diff_start_to_this_packet;
 
             data_container.addPoint(x_coord, y_coord, z_coord, corrections.laser_ring, azimuth_corrected, distance, intensity, time);
+          }
+          else
+          {
+              float time = 0;
+              if (timing_offsets.size())
+                  time = timing_offsets[block][firing * 16 + dsr] + time_diff_start_to_this_packet;
+              // if the point is outside the area of interest add an invalid point to keep the cloud dense
+              data_container.addPoint(nanf(""), nanf(""), nanf(""), corrections.laser_ring, azimuth_corrected, nanf(""),
+                                      0.0, time);
+
+
           }
         }
         data_container.newLine();

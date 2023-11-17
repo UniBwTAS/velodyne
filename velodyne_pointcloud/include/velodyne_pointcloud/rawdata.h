@@ -89,6 +89,7 @@ static const int VLP16_SCANS_PER_FIRING = 16;
 static const float VLP16_BLOCK_TDURATION = 110.592f;  // [µs]
 static const float VLP16_DSR_TOFFSET = 2.304f;        // [µs]
 static const float VLP16_FIRING_TOFFSET = 55.296f;    // [µs]
+    static const int  VLP16_MODEL_ID=  34;
 
 /** \brief Raw Velodyne data block.
  *
@@ -115,6 +116,12 @@ union two_bytes
   uint16_t uint;
   uint8_t bytes[2];
 };
+
+/*Model names strings*/
+static const std::string  VLP16    = "VLP16";
+static const std::string  V32C = "32C";
+static const std::string  V32E  = "32E";
+static const std::string  VLS128  = "VLS128";
 
 
 /** Special Definitions for VLS128 support **/
@@ -217,7 +224,9 @@ public:
 
   int pointsPerPacket() const;
 
-    unsigned int read_return_mode(const velodyne_msgs::VelodynePacket& pkt);
+  unsigned int read_return_mode(const velodyne_msgs::VelodynePacket& pkt);
+
+  std::string get_sensor_model(){return config_.model;}
 
 private:
   /** configuration parameters */
