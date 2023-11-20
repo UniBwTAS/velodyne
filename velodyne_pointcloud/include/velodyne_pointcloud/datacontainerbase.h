@@ -163,9 +163,8 @@ public:
 
   virtual void newLine() = 0;
 
-  const sensor_msgs::PointCloud2& finishCloud(ros::Time stamp)
+  virtual const sensor_msgs::PointCloud2& finishCloud(ros::Time stamp)
   {
-//    cloud.data.resize(cloud.point_step * cloud.width * cloud.height);
 
     if (!config_.target_frame.empty())
     {

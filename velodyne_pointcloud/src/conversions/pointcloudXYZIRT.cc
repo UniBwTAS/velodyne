@@ -59,5 +59,12 @@ PointcloudXYZIRT::PointcloudXYZIRT(
     ++iter_intensity;
     ++iter_time;
   }
+
+    const sensor_msgs::PointCloud2 & PointcloudXYZIRT::finishCloud(ros::Time stamp)
+    {
+        cloud.data.resize(cloud.point_step * cloud.width * cloud.height);
+
+        return DataContainerBase::finishCloud(stamp);
+    }
 }
 
