@@ -218,7 +218,7 @@ public:
   int setupOffline(std::string calibration_file, double max_range_, double min_range_);
 
   void unpack(const velodyne_msgs::VelodynePacket& pkt, DataContainerBase& data_container,
-              const ros::Time& scan_start_time, const size_t packet_pos_in_scan);
+              const ros::Time& scan_start_time, const size_t packet_pos_in_scan=0);
 
   void setParameters(double min_range, double max_range, double view_direction, double view_width);
 
