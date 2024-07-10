@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>velodyne_configuration</name>
+  <version>1.0.0</version>
+  <description>
+    Python package to configurate the velodyne VLS-128 programatically.
+  </description>
+  <maintainer email="juan.gonzalez@unibw.de">Juan D. González</maintainer>
+  <author>Juan D. González</author>
+  <license>BSD</license>
+  <url type="repository">https://tas-server.lrt.unibw-muenchen.de/tas/velodyne-driver-tas</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>rospy</depend>
+  <depend>velodyne_msgs</depend>
+  <depend>std_msgs</depend>
+
+
+
+  <export>
+
+  </export>
+</package>
