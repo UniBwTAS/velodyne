@@ -1,3 +1,5 @@
+import os
+
 import pycurl
 from io import BytesIO
 from urllib.parse import urlencode
@@ -12,6 +14,7 @@ import math
 class VelodyneConfiguration:
 
     def __init__(self):
+        # TODO how to better represent this
         # Configuration of the sensor
         self.conf = {
             "gps": {"pps_state": "Absent",
@@ -36,7 +39,13 @@ class VelodyneConfiguration:
         }
 
     # list of configurable parameter, probably there are more e.g. laser on/off Gps pps lock delay
-    conf_ids = ['rpm', "fov_start", "fov_end", "returns", "phaselock", "phaselock_off", "laser",
+    conf_ids = ['rpm',
+                "fov_start",
+                "fov_end",
+                "returns",
+                "phaselock",
+                "phaselock_off",
+                "laser",
                 "host_addr", "host_dport", "host_tport",
                 "net_addr", "net_mask", "net_gateway"]
     # Take care when turning DHCP ON. Before doing so, ensure a DHCP server on the network is available to provide the
@@ -48,7 +57,7 @@ class VelodyneConfiguration:
     __commands = {
         'get_status': 'status.json',
         'get_diagnostic': 'diag.json',
-        'get_configuration': 'snapshot.json',
+        'get_snapshot': 'snapshot.hdl',
         'set_setting': 'setting',
         'reset': 'reset',
         'save_cfg': 'save',
@@ -67,50 +76,46 @@ class VelodyneConfiguration:
 
     # Dict with the functions to interpret the diagnostic data to human-readable units
     __diagnostic_data_interpreter = \
-        {'top:hv': (lambda raw_val: 101.0 * (VelodyneConfiguration.std_voltage_conversion(raw_val) - 5.0)),
-         'top:lm20_temp': (lambda raw_val: VelodyneConfiguration.std_temperature_conversion(raw_val)),
-         'top:pwr_5v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val) * 2.0),
-         'top:pwr_2_5v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
-         'top:pwr_3_3v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
-         'top:pwr_raw': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
-         'top:pwr_vccint': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
-         'bot:i_out': (lambda raw_val: VelodyneConfiguration.std_current_conversion(raw_val)),
-         'bot:lm20_temp': (lambda raw_val: VelodyneConfiguration.std_temperature_conversion(raw_val)),
-         'bot:pwr_1_2v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
-         'bot:pwr_1_25v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
-         'bot:pwr_1_2_5v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
-         'bot:pwr_3_3v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
-         'bot:pwr_5v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val) * 2.0),
-         'bot:pwr_v_in': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val) * 11.0)
-         }
-    # Operational ranges according to manual
-    operational_ranges = \
         {
-            'top:hv': [-150.0, -132.0],
-            'top:lm20_temp': [25.0, 90.0],
-            'top:pwr_5v': [4.8, 5.2],
-            'top:pwr_2_5v': [2.3, 2.7],
-            'top:pwr_3_3v': [3.1, 3.5],
-            'top:pwr_raw': [-math.inf, math.inf],
-            'top:pwr_vccint': [1.0, 1.4],
-            'bot:i_out': [0.3, 1.0],
-            'bot:lm20_temp': [-25.0, 90.0],
-            'bot:pwr_1_2v': [1.0, 1.4],
-            'bot:pwr_1_25v': [1.0, 1.4],
-            'bot:pwr_1_2_5v': [2.3, 2.7],
-            'bot:pwr_3_3v': [3.1, 3.5],
-            'bot:pwr_5v': [4.8, 5.2],
-            'bot:pwr_v_in': [8.0, 19.0],
+            'top': {
+                'hv': (lambda raw_val: 101.0 * (VelodyneConfiguration.std_voltage_conversion(raw_val) - 5.0)),
+                'lm20_temp': (lambda raw_val: VelodyneConfiguration.std_temperature_conversion(raw_val)),
+                'pwr_5v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val) * 2.0),
+                'pwr_2_5v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
+                'pwr_3_3v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
+                'pwr_raw': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
+                'pwr_vccint': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val))},
+            'bot': {
+                'i_out': (lambda raw_val: VelodyneConfiguration.std_current_conversion(raw_val)),
+                'lm20_temp': (lambda raw_val: VelodyneConfiguration.std_temperature_conversion(raw_val)),
+                'pwr_1_2v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
+                'pwr_1_25v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
+                'pwr_1_2_5v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
+                'pwr_3_3v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val)),
+                'pwr_5v': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val) * 2.0),
+                'pwr_v_in': (lambda raw_val: VelodyneConfiguration.std_voltage_conversion(raw_val) * 11.0)}
         }
-
-    def config(self, name):
-        return self.conf[name]
-
-    def set(self, name, value):
-        if name in self.conf:
-            self.conf[name] = value
-        else:
-            raise NameError("Name not accepted in set() method")
+    # Operational ranges according to manual
+    __operational_ranges = \
+        {'top': {
+            'hv': [-150.0, -132.0],
+            'lm20_temp': [25.0, 90.0],
+            'pwr_5v': [4.8, 5.2],
+            'pwr_2_5v': [2.3, 2.7],
+            'pwr_3_3v': [3.1, 3.5],
+            'pwr_raw': [-math.inf, math.inf],
+            'pwr_vccint': [1.0, 1.4]
+        },
+            'bot': {
+                'i_out': [0.3, 1.0],
+                'lm20_temp': [-25.0, 90.0],
+                'pwr_1_2v': [1.0, 1.4],
+                'pwr_1_25v': [1.0, 1.4],
+                'pwr_1_2_5v': [2.3, 2.7],
+                'pwr_3_3v': [3.1, 3.5],
+                'pwr_5v': [4.8, 5.2],
+                'pwr_v_in': [8.0, 19.0]}
+        }
 
     @staticmethod
     def get_command_url(cmd_id, base_url):
@@ -132,17 +137,21 @@ class VelodyneConfiguration:
         return -1481.96 + math.sqrt(2.1962e6 + (1.8639 - (raw_val * 5.0 / 4096)) / 3.88e-6)
 
     @staticmethod
-    def interpret_diagnostic_data(name, raw_val):
-        if name in VelodyneConfiguration.__diagnostic_data_interpreter:
-            op = VelodyneConfiguration.__diagnostic_data_interpreter[name]
+    def interpret_diagnostic_data(board, name, raw_val):
+        if board not in VelodyneConfiguration.__diagnostic_data_interpreter:
+            raise NameError("board position mus be top or bot not %s ", board)
+        if name in VelodyneConfiguration.__diagnostic_data_interpreter[board]:
+            op = VelodyneConfiguration.__diagnostic_data_interpreter[board][name]
             return op(raw_val)
         else:
             raise NameError("Diagnostic data %s name not accepted", name)
 
     @staticmethod
-    def check_diagnostic_data_in_range(name, interpreted_val):
-        if name in VelodyneConfiguration.__diagnostic_data_interpreter:
-            val_range = VelodyneConfiguration.__operational_ranges[name]
+    def check_diagnostic_data_in_range(board, name, interpreted_val):
+        if board not in VelodyneConfiguration.__operational_ranges:
+            raise NameError("board position mus be top or bot not %s ", board)
+        if name in VelodyneConfiguration.__diagnostic_data_interpreter[board]:
+            val_range = VelodyneConfiguration.__operational_ranges[board][name]
             return val_range[0] < interpreted_val < val_range[1]
         else:
             raise NameError("Diagnostic data %s name not accepted", name)
@@ -182,7 +191,7 @@ class Configurator:
         print('Sensor laser is %s, motor rpm is %s, Return mode is %s',
               status['laser']['state'], status['motor']['rpm'], status['returns'])
 
-    def _request_json(self,cmd):
+    def _request_json(self, cmd):
         try:
             url = VelodyneConfiguration.get_command_url(cmd, self.Base_URL)
             response = urllib.request.urlopen(url, timeout=5)
@@ -281,6 +290,7 @@ class Configurator:
             raise NameError("Parameter name not found. Name:%s ", setting_id)
 
     def get_setting(self, setting_id):
+        # TODO
         pass
 
     def sensor_do(self, url, encoded_command):
@@ -296,30 +306,62 @@ class Configurator:
         return success
 
     def get_diagnostics(self):
-
+        interpreted_diagnostics = {}
         diagnostics = self._request_json('get_diagnostic')
-        interpret_diagnostic_data(name,raw_data)
-        pass
+        volt_temp = diagnostics['volt_temp']
+        interpreted_diagnostics['volt_temp'] = {}
+        for t_b in volt_temp:
+            interpreted_diagnostics[t_b] = {}
+            for name in volt_temp[t_b]:
+                value = volt_temp[t_b][name]
+                interp_value = value
+                try:
+                    interp_value = VelodyneConfiguration.interpret_diagnostic_data(t_b, name, value)
+                except NameError:
+                    print("Value of %s %s can not be interpreted, leaving it as it is", t_b, name)
+                    pass
+
+                interpreted_diagnostics[t_b][name] = interp_value
+
+        return interpreted_diagnostics
+
+    def check_diagnostics_parameter(self, t_b, diag_par, value):
+        try:
+            in_range = VelodyneConfiguration.check_diagnostic_data_in_range(t_b, diag_par, value)
+        except NameError:
+            print("Value of %s %s can not be checked, no defined ranges", t_b, diag_par)
+            raise NameError("Parameters ranges not defined for check")
+        return in_range
 
     def get_status(self):
-        'get_status'
         status = self._request_json('get_status')
-        pass
+        return status
 
-    def get_configuration(self):
+    def download_snapshot(self, folder_path, file_name=None):
 
-        configuration = self._request_json('get_configuration')
-        pass
+        url = VelodyneConfiguration.get_command_url("get_snapshot", self.Base_URL)
+        # Ensure the folder exists
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
 
+        # Get the file name from the URL if not provided
+        if not file_name:
+            file_name = os.path.basename(url)
 
+        # Full path to save the file
+        file_path = os.path.join(folder_path, file_name)
 
-
+        try:
+            urllib.request.urlretrieve(url, file_path)
+            print(f'File downloaded and saved to {file_path}')
+        except Exception as e:
+            print(f'Failed to download the file. Error: {e}')
 
     def reset_sensor(self):
         rc = self.sensor_do(self.config.get_command_url("reset", self.Base_URL),
                             urlencode({'data': self.config.reset}))
         if not rc:
-            raise Exception('Fail to restet the sensor')
+            raise Exception('Fail to reset the sensor')
         else:
             time.sleep(10)
 
