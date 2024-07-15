@@ -18,6 +18,6 @@ include_directories(
 )
 
 catkin_install_python(PROGRAMS
-        scr/configuration_node.py
+        src/configuration_node.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
