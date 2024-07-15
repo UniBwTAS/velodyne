@@ -8,7 +8,13 @@ find_package(catkin REQUIRED COMPONENTS
         velodyne_msgs
 )
 
+catkin_python_setup()
+
 catkin_package(
+    CATKIN_DEPENDS
+    rospy
+    std_msgs
+    velodyne_msgs
 
 )
 
@@ -18,6 +24,6 @@ include_directories(
 )
 
 catkin_install_python(PROGRAMS
-        src/configuration_node.py
+    nodes/configuration_node.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

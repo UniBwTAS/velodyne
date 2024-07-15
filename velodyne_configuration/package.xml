@@ -3,7 +3,7 @@
   <name>velodyne_configuration</name>
   <version>1.0.0</version>
   <description>
-    Python package to configurate the velodyne VLS-128 programatically.
+    Python package to configure the velodyne VLS-128 programmatically.
   </description>
   <maintainer email="juan.gonzalez@unibw.de">Juan D. González</maintainer>
   <author>Juan D. González</author>

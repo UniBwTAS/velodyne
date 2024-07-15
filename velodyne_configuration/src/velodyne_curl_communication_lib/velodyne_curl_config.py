@@ -188,8 +188,8 @@ class Configurator:
     def test_connection(self):
         # Test connection to sensor
         status = self._request_json('get_status')
-        print('Sensor laser is %s, motor rpm is %s, Return mode is %s',
-              status['laser']['state'], status['motor']['rpm'], status['returns'])
+        print('Sensor laser is %s, motor rpm is %s',
+              status['laser']['state'], status['motor']['rpm'])
 
     def _request_json(self, cmd):
         try:

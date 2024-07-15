@@ -1,44 +1,55 @@
 #!/usr/bin/env python3
 
 import rospy
-import velodyne_curl_config
+import time
+
+from velodyne_curl_communication_lib.velodyne_curl_config import Configurator
 from velodyne_msgs.msg import VelodyneReturnMode
+
 
 class ConfiguratorNode:
     def __init__(self):
         rospy.init_node("velodyne_configuration_node", anonymous=True)
         rospy.loginfo("Velodyne configuration node initializing")
 
-        velodyne_ip = '192.168.103.201'
+        velodyne_ip = '192.168.3.201'
         if rospy.has_param('velodyne_ip'):
             velodyne_ip = rospy.get_param('~velodyne_ip')
         else:
-            rospy.loginfo("velodyne_ip parameter not found, using default ip %s", velodyne_ip )
+            rospy.loginfo("velodyne_ip parameter not found, using default ip %s", velodyne_ip)
 
         rospy.loginfo("Using sensor IP: %s", velodyne_ip)
 
-        self.configurator = velodyne_curl_config.Configurator(velodyne_ip)
-
-        self.configurator.set_setting("returns", VelodyneReturnMode.DOUBLE)
+        self.configurator = Configurator(velodyne_ip)
+        print("Changing return mode")
+        self.configurator.set_setting("returns", VelodyneReturnMode.DUAL)
+        time.sleep(10)
+        print("get diagnostics")
         d = self.configurator.get_diagnostics()
         print("diagnostics:")
         print(d)
+        time.sleep(10)
         state = self.configurator.get_status()
         print("state")
         print(state)
-        self.configurator.set_setting("laser","off")
-        rospy.sleep(rospy.Duration.from_sec(5))
-        self.configurator.set_setting("laser","on")
-        self.configurator.set_setting("returns",VelodyneReturnMode.STRONGEST)
-
+        time.sleep(10)
+        print("Turning the lasers off")
+        self.configurator.set_setting("laser", "off")
+        time.sleep(10)
+        print("Turning the laser on")
+        self.configurator.set_setting("laser", "on")
+        time.sleep(10)
+        print("Setting return mode Strong")
+        self.configurator.set_setting("returns", VelodyneReturnMode.STRONGEST)
+        time.sleep(10)
+        print("Getting diagnostics")
         diagnost = self.configurator.get_diagnostics()
         print("diagnost")
         print(diagnost)
-
+        print("Resetting sensor")
         self.configurator.reset_sensor()
 
         rospy.sleep(rospy.Duration.from_sec(10))
-
 
 
 if __name__ == "__main__":
