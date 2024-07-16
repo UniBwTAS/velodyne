@@ -1,0 +1,21 @@
+# request
+time stamp
+uint16 rpm
+uint16 fov_start
+uint16 fov_end
+velodyne_msgs/VelodyneReturnMode returns
+uint16 phase
+bool phaselock
+bool laser
+string host_addr
+string host_dport
+string host_tport
+string net_addr
+string net_mask
+string net_gateway
+---
+#response
+time stamp
+bool success
+
+

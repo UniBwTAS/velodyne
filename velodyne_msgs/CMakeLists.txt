@@ -10,6 +10,15 @@ add_message_files(
   VelodyneScan.msg
   VelodyneReturnMode.msg
 )
+
+add_service_files (
+        DIRECTORY srv
+        FILES
+        VelodyneSetConfiguration.srv
+        VelodyneRequestConfiguration.srv
+
+)
+
 generate_messages(DEPENDENCIES std_msgs)
 
 catkin_package(
