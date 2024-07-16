@@ -9,33 +9,39 @@ import time
 from urllib.error import HTTPError, URLError
 import socket
 import math
+import tempfile
 
+
+# TODO fill initial config with snapshot
 
 class VelodyneConfiguration:
 
     def __init__(self):
-        # TODO how to better represent this
         # Configuration of the sensor
         self.conf = {
-            "gps": {"pps_state": "Absent",
-                    "position": ""},
-            "motor": {"state": "On",
-                      "rpm": 600,
-                      "lock": "Off",
-                      "phase": 0},
-            "laser": {"state": "On"},
+            # These are in the status msg.
+            "gps_pps_state": "Absent",
+            "gps_position": "",
+            "tod_sec": 0,
+            "tod_nsec": 0,
+            "usectoh": 411093848,
+            "motor_state": True,
+            "rpm": 600,
+            "phaselock": False,
+            "phase": 0,
+            "ns_per_rev": 100040448,
+            "laser": True,
+            # These have to be read from other source
             "returns": "Strongest",
-            "fov": {"start": 0,
-                    "end": 359},
-            "host": {"addr": "255.255.255.255",
-                     "host_dport": 2368,
-                     "host_tport": 8309, },
-            "net": {"addr": "192.168.1.200",
-                    "mask": "255.255.255.0",
-                    "gateway": "192.168.1.2",
-                    "dhcp": "on"},
-            # "": ,
-            # "": ,
+            "fov_start": 0,
+            "fov_end": 359,
+            "host_addr": "255.255.255.255",
+            "host_dport": 2368,
+            "host_tport": 8309,
+            "net_addr": "192.168.1.200",
+            "net_mask": "255.255.255.0",
+            "net_gateway": "192.168.1.2",
+            "net_dhcp": "on"
         }
 
     # list of configurable parameter, probably there are more e.g. laser on/off Gps pps lock delay
@@ -187,9 +193,29 @@ class Configurator:
 
     def test_connection(self):
         # Test connection to sensor
-        status = self._request_json('get_status')
+        status = self.get_status()
         print('Sensor laser is %s, motor rpm is %s',
               status['laser']['state'], status['motor']['rpm'])
+
+        # Download a temporal snapshot to get the current state of the sensor
+        # url = VelodyneConfiguration.get_command_url("get_snapshot", self.Base_URL)
+        #
+        # with urllib.request.urlopen(url) as response:
+        #     file_data = response.read
+        #
+        # with tempfile.NamedTemporaryFile(suffix=".hdl") as temp_file:
+        #
+        #     file_name = os.path.basename(url)
+        #
+        #     # Full path to save the file
+        #     file_path = os.path.join(folder_path, file_name)
+        #
+        # try:
+        #     urllib.request.urlretrieve(url, file_path)
+        #     print(f'File downloaded and saved to {file_path}')
+        # except Exception as e:
+        #     print(f'Failed to download the file. Error: {e}')
+
 
     def _request_json(self, cmd):
         try:
@@ -222,6 +248,8 @@ class Configurator:
                 if VelodyneConfiguration.check_rpm_soll_val(value):
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL),
                                         urlencode({'rpm': str(value)}))
+                    if rc:
+                        self.config.conf[setting_id] = value
                 else:
                     raise ValueError("The desired value for the rpm is outside the allowed range")
 
@@ -229,6 +257,8 @@ class Configurator:
                 if VelodyneConfiguration.check_fov_soll_val(value):
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + '/fov',
                                         urlencode({'start': str(value)}))
+                    if rc:
+                        self.config.conf[setting_id] = value
                 else:
                     raise ValueError("The desired value for the start of the fov is outside the allowed range")
 
@@ -236,6 +266,8 @@ class Configurator:
                 if VelodyneConfiguration.check_fov_soll_val(value):
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + '/fov',
                                         urlencode({'end': str(value)}))
+                    if rc:
+                        self.config.conf[setting_id] = value
                 else:
                     raise ValueError("The desired value for the end of the fov is outside the allowed range")
 
@@ -243,6 +275,8 @@ class Configurator:
                 if VelodyneConfiguration.check_return_mode_soll_val(value):
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL),
                                         urlencode({'returns': VelodyneConfiguration.return_modes[value]}))
+                    if rc:
+                        self.config.conf[setting_id] = VelodyneConfiguration.return_modes[value]
                 else:
                     raise ValueError("The desired return mode is not permitted")
 
@@ -251,6 +285,9 @@ class Configurator:
                     cmd = {"enabled": "on", "offset": str(value * 100), "offsetInput": str(value)}
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + 'phaselock',
                                         urlencode(cmd))
+                    if rc:
+                        self.config.conf[setting_id] = True
+                        self.config.conf["phase"] = value
                 else:
                     raise ValueError("The desired phase lock value %s is invalid", str(value))
 
@@ -258,11 +295,16 @@ class Configurator:
                 cmd = {"enabled": "off", "offset": str(0 * 100), "offsetInput": str(0)}
                 rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + 'phaselock',
                                     urlencode(cmd))
+                if rc:
+                    self.config.conf[setting_id] = False
+                    self.config.conf["phase"] = 0
 
             elif setting_id == 'laser':
                 if VelodyneConfiguration.check_on_off_soll_val(value):
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL),
                                         urlencode({'laser': value}))
+                    if rc:
+                        self.config.conf[setting_id] = True if value is "on" else False
                 else:
                     raise ValueError("Wrong option for laser on/off")
 
@@ -274,11 +316,15 @@ class Configurator:
                 if cmd[0] == "host":
                     url = self.config.get_command_url("set_setting", self.Base_URL) + "/host"
                     rc = self.sensor_do(url, urlencode({cmd[1]: value}))
+                    if rc:
+                        self.config.conf[setting_id] = value
                 elif cmd[0] == "net":
                     url = self.config.get_command_url("set_setting", self.Base_URL) + "/net"
                     rc = self.sensor_do(url, urlencode({cmd[1]: value}))
-                    self.safe_current_config_to_sensor()
-                    self.reset_sensor()
+                    if rc:
+                        self.config.conf[setting_id] = value
+                        self.safe_current_config_to_sensor()
+                        self.reset_sensor()
 
                 else:
                     raise NameError("The passed setting is not recognised", setting_id)
@@ -290,8 +336,12 @@ class Configurator:
             raise NameError("Parameter name not found. Name:%s ", setting_id)
 
     def get_setting(self, setting_id):
-        # TODO
-        pass
+        try:
+            value = self.config.conf["setting_id"]
+        except KeyError:
+            print(" %s is not a valid setting", setting_id)
+            return None
+        return value
 
     def sensor_do(self, url, encoded_command):
         self.sensor.setopt(self.sensor.URL, url)
@@ -335,6 +385,21 @@ class Configurator:
 
     def get_status(self):
         status = self._request_json('get_status')
+
+        # Only this information is in the status response
+
+        self.config.conf["gps_pps_state"] = status["gps"]["pps_state"]
+        self.config.conf["gps_position"] = status["gps"]["position"]
+        self.config.conf["tod_sec"] = status["tod"]["sec"]
+        self.config.conf["tod_nsec"] = status["tod"]["nsec"]
+        self.config.conf["usectoh"] = status["usectoh"]
+        self.config.conf["motor_state"] = True if status["motor"]["state"] is "On" else False
+        self.config.conf["rpm"] = status["motor"]["rpm"]
+        self.config.conf["phaselock"] = False if status["motor"]["lock"] is "Off" else True
+        self.config.conf["phase"] = status["motor"]["phase"]
+        self.config.conf["ns_per_rev"] = status["motor"]["ns_per_rev"]
+        self.config.conf["laser"] = True if status["laser"]["state"] is "On" else False
+
         return status
 
     def download_snapshot(self, folder_path, file_name=None):
@@ -365,7 +430,7 @@ class Configurator:
         else:
             time.sleep(10)
 
-    def safe_current_config_to_sensor(self):
+    def save_current_config_to_sensor(self):
         rc = self.sensor_do(self.config.get_command_url("save_cfg", self.Base_URL),
                             urlencode({'data': self.config.submit}))
         if not rc:

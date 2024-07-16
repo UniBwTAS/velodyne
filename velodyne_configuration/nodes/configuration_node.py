@@ -5,6 +5,7 @@ import time
 
 from velodyne_curl_communication_lib.velodyne_curl_config import Configurator
 from velodyne_msgs.msg import VelodyneReturnMode
+import os
 
 
 class ConfiguratorNode:
@@ -43,14 +44,18 @@ class ConfiguratorNode:
         self.configurator.set_setting("returns", VelodyneReturnMode.STRONGEST)
         time.sleep(10)
         print("Getting diagnostics")
-        diagnost = self.configurator.get_diagnostics()
-        print("diagnost")
-        print(diagnost)
+        diagnostics = self.configurator.get_diagnostics()
+        print("diagnostics")
+        print(diagnostics)
         print("Resetting sensor")
         self.configurator.reset_sensor()
+        time.sleep(15)
+        print("Downloading snapshot")
+        home = os.environ.get('HOME')
+        self.configurator.download_snapshot(home+"/Downloads")
 
         rospy.sleep(rospy.Duration.from_sec(10))
-
+        print("done")
 
 if __name__ == "__main__":
     try:
