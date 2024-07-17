@@ -9,8 +9,8 @@ from velodyne_msgs.srv import VelodyneRequestConfiguration
 from velodyne_msgs.srv import VelodyneRequestConfigurationResponse
 from velodyne_msgs.srv import VelodyneSetConfiguration
 from velodyne_msgs.srv import VelodyneSetConfigurationResponse
-from velodyne_msgs.srv import VelodyneSpecialCommand
-from velodyne_msgs.srv import VelodyneSpecialCommandResponse
+from velodyne_msgs.srv import VelodyneSpecialCommands
+from velodyne_msgs.srv import VelodyneSpecialCommandsResponse
 
 import os
 
@@ -30,20 +30,15 @@ class ConfiguratorNode:
         VelodyneReturnMode.DUAL_CONF: 'Dual_conf',
     }
 
-    # TODO: Diagnostics with check
-    # TODO: Reset Sensor
-    # TODO: snapshot file download
-    # TODO: save current config
-
     def __init__(self):
         rospy.loginfo("Velodyne configuration node initializing")
         rospy.init_node("velodyne_configuration_node", anonymous=False)
 
         self._set_service = rospy.Service('/sensor/lidar/vls128_roof/set_configuration', VelodyneSetConfiguration,
                                           self.set_configuration)
-        self._get_service = rospy.Service('/sensor/lidar/vls128_roof/request_configuration', VelodyneSetConfiguration,
+        self._get_service = rospy.Service('/sensor/lidar/vls128_roof/request_configuration', VelodyneRequestConfiguration,
                                           self.get_configuration)
-        self._cmd_service = rospy.Service('/sensor/lidar/vls128_roof/special_command', VelodyneSpecialCommand,
+        self._cmd_service = rospy.Service('/sensor/lidar/vls128_roof/special_command', VelodyneSpecialCommands,
                                           self.send_command)
 
         velodyne_ip = '192.168.3.201'
@@ -66,21 +61,31 @@ class ConfiguratorNode:
         self.configurator = Configurator(velodyne_ip)  # Loads config object with current state
 
     def send_command(self, request):
-        response = VelodyneSpecialCommandResponse()
+        response = VelodyneSpecialCommandsResponse()
         try:
-            if request.command == VelodyneSpecialCommand.DIAGNOSTICS:
+            if request.command == VelodyneSpecialCommands.DIAGNOSTICS:
                 diag = self.configurator.get_diagnostics()
+                response.all_in_range = True
+                outside_range = []
                 for b in diag:
                     for n in diag[b]:
                         in_range = self.configurator.check_diagnostics_parameter(b, n, diag[b][n])
                         if not in_range:
                             print("parameter %s %s is outside operational ranges [%f]", b, n, diag[b][n])
-            elif request.command == VelodyneSpecialCommand.RESET_SENSOR:
+                            response.all_in_range = False
+                            outside_range.append(b+"_"+n)
+                response.parameters = outside_range
+                response.success = True
+
+            elif request.command == VelodyneSpecialCommands.RESET_SENSOR:
                 self.configurator.reset_sensor()
-            elif request.command == VelodyneSpecialCommand.GET_SNAPSHOT:
+                response.success = True
+            elif request.command == VelodyneSpecialCommands.DOWNLOAD_SNAPSHOT:
                 self.configurator.download_snapshot(self.snapshot_path)
-            elif request.command == VelodyneSpecialCommand.SAVE_CONFIG:
+                response.success = True
+            elif request.command == VelodyneSpecialCommands.SAVE_CONFIG:
                 self.configurator.save_current_config_to_sensor()
+                response.success = True
             else:
                 response.success = False
         except RuntimeError as e:

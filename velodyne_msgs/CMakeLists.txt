@@ -16,6 +16,7 @@ add_service_files (
         FILES
         VelodyneSetConfiguration.srv
         VelodyneRequestConfiguration.srv
+        VelodyneSpecialCommands.srv
 
 )
 

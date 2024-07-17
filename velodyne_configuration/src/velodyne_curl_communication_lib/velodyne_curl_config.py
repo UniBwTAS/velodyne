@@ -194,7 +194,10 @@ class Configurator:
 
     def test_connection(self):
         # Test connection to sensor
-        status = self.get_current_configuration()
+        try:
+            status = self.get_current_configuration()
+        except RuntimeError as e:
+            raise RuntimeError from e
         print('Sensor laser is %s, motor rpm is %s',
               status['laser']['state'], status['motor']['rpm'])
 
@@ -407,6 +410,7 @@ class Configurator:
         try:
             status = self._request_json('get_status')
         except Exception as e:
+            print(e)
             raise RuntimeError from e
 
         # Only this information is in the status response

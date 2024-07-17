@@ -1,7 +1,7 @@
 # request
 uint8 DIAGNOSTICS                    = 0
 uint8 RESET_SENSOR                   = 1
-uint8 GET_SNAPSHOT                   = 2
+uint8 DOWNLOAD_SNAPSHOT              = 2
 uint8 SAVE_CONFIG                    = 3
 
 uint8 command
@@ -10,3 +10,5 @@ uint8 command
 #response
 time stamp
 bool success
+bool all_in_range
+string[] parameters
