@@ -1,7 +1,7 @@
 # request
 time stamp
 ---
-#response
+# response
 time stamp
 bool success
 string gps_pps_state
@@ -23,5 +23,7 @@ string host_tport
 string net_addr
 string net_mask
 string net_gateway
+string net_dhcp
+string net_mac_addr
 
 

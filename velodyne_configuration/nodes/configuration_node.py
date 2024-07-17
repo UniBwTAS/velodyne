@@ -10,6 +10,7 @@ from velodyne_msgs.srv import VelodyneRequestConfigurationResponse
 from velodyne_msgs.srv import VelodyneSetConfiguration
 from velodyne_msgs.srv import VelodyneSetConfigurationResponse
 from velodyne_msgs.srv import VelodyneSpecialCommands
+from velodyne_msgs.srv import VelodyneSpecialCommandsRequest
 from velodyne_msgs.srv import VelodyneSpecialCommandsResponse
 
 import os
@@ -36,7 +37,8 @@ class ConfiguratorNode:
 
         self._set_service = rospy.Service('/sensor/lidar/vls128_roof/set_configuration', VelodyneSetConfiguration,
                                           self.set_configuration)
-        self._get_service = rospy.Service('/sensor/lidar/vls128_roof/request_configuration', VelodyneRequestConfiguration,
+        self._get_service = rospy.Service('/sensor/lidar/vls128_roof/request_configuration',
+                                          VelodyneRequestConfiguration,
                                           self.get_configuration)
         self._cmd_service = rospy.Service('/sensor/lidar/vls128_roof/special_command', VelodyneSpecialCommands,
                                           self.send_command)
@@ -58,12 +60,14 @@ class ConfiguratorNode:
         else:
             rospy.loginfo("parameter_name parameter not found, using default ip %s", self.snapshot_path)
 
+        print("Create configuration Object")
         self.configurator = Configurator(velodyne_ip)  # Loads config object with current state
+        print("Configuration node ready")
 
     def send_command(self, request):
         response = VelodyneSpecialCommandsResponse()
         try:
-            if request.command == VelodyneSpecialCommands.DIAGNOSTICS:
+            if request.command == VelodyneSpecialCommandsRequest.DIAGNOSTICS:
                 diag = self.configurator.get_diagnostics()
                 response.all_in_range = True
                 outside_range = []
@@ -77,13 +81,13 @@ class ConfiguratorNode:
                 response.parameters = outside_range
                 response.success = True
 
-            elif request.command == VelodyneSpecialCommands.RESET_SENSOR:
+            elif request.command == VelodyneSpecialCommandsRequest.RESET_SENSOR:
                 self.configurator.reset_sensor()
                 response.success = True
-            elif request.command == VelodyneSpecialCommands.DOWNLOAD_SNAPSHOT:
+            elif request.command == VelodyneSpecialCommandsRequest.DOWNLOAD_SNAPSHOT:
                 self.configurator.download_snapshot(self.snapshot_path)
                 response.success = True
-            elif request.command == VelodyneSpecialCommands.SAVE_CONFIG:
+            elif request.command == VelodyneSpecialCommandsRequest.SAVE_CONFIG:
                 self.configurator.save_current_config_to_sensor()
                 response.success = True
             else:
@@ -96,14 +100,14 @@ class ConfiguratorNode:
         return response
 
     def get_configuration(self, request):
-
+        print("Request to get current configuration")
         response = VelodyneRequestConfigurationResponse()
         try:
-            current_conf = self.configurator.get_current_configuration()
+            current_conf = self.configurator.get_current_configuration().conf
             response.gps_pps_state = current_conf["gps_pps_state"]
             response.gps_position = current_conf["gps_position"]
-            response.tod_time.sec = current_conf["tod_sec"]
-            response.tod_time.nanosec = current_conf["tod_nsec"]
+            response.tod_time.secs = current_conf["tod_sec"]
+            response.tod_time.nsecs = current_conf["tod_nsec"]
             response.usectoh = current_conf["usectoh"]
             response.motor_state = current_conf["motor_state"]
             response.rpm = current_conf["rpm"]
@@ -122,8 +126,8 @@ class ConfiguratorNode:
             response.net_addr = current_conf["net_addr"]
             response.net_mask = current_conf["net_mask"]
             response.net_gateway = current_conf["net_gateway"]
-            response.net_dhcp = current_conf["net_dhcp"]
-            response.net_mac_addr = current_conf["net_mac_addr"]
+            #response.net_dhcp = current_conf["net_dhcp"]
+            #response.net_mac_addr = current_conf["net_mac_addr"]
 
             response.success = True
         except RuntimeError as e:
@@ -137,7 +141,7 @@ class ConfiguratorNode:
         return response
 
     def set_configuration(self, request):
-
+        print("Request to set configuration")
         # Find what is different
         changes = {}
         if request.rpm != self.configurator.get_setting("rpm"):
@@ -147,7 +151,7 @@ class ConfiguratorNode:
         if request.fov_end != self.configurator.get_setting("fov_end"):
             changes["fov_end"] = request.fov_end
         if request.returns.return_mode != ConfiguratorNode.return_modes[self.configurator.get_setting("returns")]:
-            changes["returns"].return_mode = ConfiguratorNode.return_mode_to_str_cmd[request.returns.return_mode]
+            changes["returns"] = request.returns.return_mode
         if request.phaselock != self.configurator.get_setting("phaselock"):
             changes["phaselock"] = request.phaselock
         if request.phase != self.configurator.get_setting("phase"):

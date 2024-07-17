@@ -190,21 +190,26 @@ class Configurator:
         self.Base_URL = 'http://' + velodyne_ip + '/cgi/'
         self.sensor = pycurl.Curl()
         self.buffer = BytesIO()
+        print("Testing connection to sensor")
         self.test_connection()
+        print("Connection OK")
 
     def test_connection(self):
         # Test connection to sensor
         try:
-            status = self.get_current_configuration()
+            cfg = self.get_current_configuration()
+
         except RuntimeError as e:
+            print(e)
             raise RuntimeError from e
-        print('Sensor laser is %s, motor rpm is %s',
-              status['laser']['state'], status['motor']['rpm'])
+
+        print('Sensor laser is %b, motor rpm is %i',
+              cfg.conf['laser'], cfg.conf['rpm'])
+
 
     def _update_conf_from_snapshot(self):
         # Download a temporal snapshot to get the current state of the sensor
         url = VelodyneConfiguration.get_command_url("get_snapshot", self.Base_URL)
-
         with tempfile.NamedTemporaryFile() as temp_file:
             temp_file_path = temp_file.name
             urllib.request.urlretrieve(url, temp_file_path)
@@ -357,7 +362,7 @@ class Configurator:
 
     def get_setting(self, setting_id):
         try:
-            value = self.config.conf["setting_id"]
+            value = self.config.conf[setting_id]
         except KeyError:
             print(" %s is not a valid setting", setting_id)
             return None
@@ -408,7 +413,9 @@ class Configurator:
 
     def get_current_configuration(self):
         try:
+            print("Get status")
             status = self._request_json('get_status')
+            print("Status received")
         except Exception as e:
             print(e)
             raise RuntimeError from e
@@ -427,8 +434,9 @@ class Configurator:
         self.config.conf["ns_per_rev"] = status["motor"]["ns_per_rev"]
         self.config.conf["laser"] = True if status["laser"]["state"] == "On" else False
 
+        print("Get Snapshot")
         self._update_conf_from_snapshot()
-
+        print("Snapshot received")
         return self.config
 
     def download_snapshot(self, folder_path, file_name=None):

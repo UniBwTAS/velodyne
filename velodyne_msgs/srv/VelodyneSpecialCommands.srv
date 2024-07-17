@@ -4,6 +4,7 @@ uint8 RESET_SENSOR                   = 1
 uint8 DOWNLOAD_SNAPSHOT              = 2
 uint8 SAVE_CONFIG                    = 3
 
+time stamp
 uint8 command
 
 ---
