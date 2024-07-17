@@ -72,8 +72,14 @@ class ConfiguratorNode:
                 response.all_in_range = True
                 outside_range = []
                 for b in diag:
+                    print(b)
                     for n in diag[b]:
-                        in_range = self.configurator.check_diagnostics_parameter(b, n, diag[b][n])
+                        print(n)
+                        try:
+                            in_range = self.configurator.check_diagnostics_parameter(b, n, diag[b][n])
+                        except NameError as e:
+                            print("No ranges for parameter", b, n)
+                            in_range = True
                         if not in_range:
                             print("parameter %s %s is outside operational ranges [%f]", b, n, diag[b][n])
                             response.all_in_range = False

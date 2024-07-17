@@ -94,7 +94,7 @@ class ConfiguratorNode:
 
         spc_cmd_response = self._special_config_srv_proxy(spc_cmd_config_request)
 
-        if spc_cmd_response.succes:
+        if spc_cmd_response.success:
             print("all parameters within the operational range")
         else:
             print("parameter outside its operational range!")
