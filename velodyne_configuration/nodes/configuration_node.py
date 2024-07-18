@@ -35,12 +35,19 @@ class ConfiguratorNode:
         rospy.loginfo("Velodyne configuration node initializing")
         rospy.init_node("velodyne_configuration_node", anonymous=False)
 
-        self._set_service = rospy.Service('/sensor/lidar/vls128_roof/set_configuration', VelodyneSetConfiguration,
+        ns = '/sensor/lidar/vls128_roof'
+        parameter_name = rospy.resolve_name('~ns_transform')
+        if rospy.has_param(parameter_name):
+            ns = rospy.get_param(parameter_name)
+        else:
+            rospy.loginfo("name space  parameter not found, using default ip %s" % ns)
+
+        self._set_service = rospy.Service('/set_configuration', VelodyneSetConfiguration,
                                           self.set_configuration)
-        self._get_service = rospy.Service('/sensor/lidar/vls128_roof/request_configuration',
+        self._get_service = rospy.Service('/request_configuration',
                                           VelodyneRequestConfiguration,
                                           self.get_configuration)
-        self._cmd_service = rospy.Service('/sensor/lidar/vls128_roof/special_command', VelodyneSpecialCommands,
+        self._cmd_service = rospy.Service('/special_command', VelodyneSpecialCommands,
                                           self.send_command)
 
         velodyne_ip = '192.168.3.201'
@@ -48,9 +55,9 @@ class ConfiguratorNode:
         if rospy.has_param(parameter_name):
             velodyne_ip = rospy.get_param(parameter_name)
         else:
-            rospy.loginfo("velodyne_ip parameter not found, using default ip %s", velodyne_ip)
+            rospy.loginfo("velodyne_ip parameter not found, using default ip %s" % velodyne_ip)
 
-        rospy.loginfo("Using sensor IP: %s", velodyne_ip)
+        rospy.loginfo("Using sensor IP: %s" % velodyne_ip)
 
         home = os.environ.get('HOME')
         self.snapshot_path = home + "/Downloads"
@@ -58,7 +65,7 @@ class ConfiguratorNode:
         if rospy.has_param(parameter_name):
             self.snapshot_path = rospy.get_param(parameter_name)
         else:
-            rospy.loginfo("parameter_name parameter not found, using default ip %s", self.snapshot_path)
+            rospy.loginfo("parameter_name parameter not found, using default ip %s" % self.snapshot_path)
 
         print("Create configuration Object")
         self.configurator = Configurator(velodyne_ip)  # Loads config object with current state
@@ -81,9 +88,9 @@ class ConfiguratorNode:
                             print("No ranges for parameter", b, n)
                             in_range = True
                         if not in_range:
-                            print("parameter %s %s is outside operational ranges [%f]", b, n, diag[b][n])
+                            print("parameter %s %s is outside operational ranges [%f]" % (b, n, diag[b][n]))
                             response.all_in_range = False
-                            outside_range.append(b+"_"+n)
+                            outside_range.append(b + "_" + n)
                 response.parameters = outside_range
                 response.success = True
 

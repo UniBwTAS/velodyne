@@ -17,7 +17,7 @@ from velodyne_msgs.srv import VelodyneSpecialCommandsRequest
 from velodyne_msgs.srv import VelodyneSpecialCommandsResponse
 
 
-# TODO add wait for services
+
 
 class ConfiguratorNode:
     def __init__(self):
@@ -30,6 +30,12 @@ class ConfiguratorNode:
                                                             VelodyneRequestConfiguration)
         self._special_config_srv_proxy = rospy.ServiceProxy('/sensor/lidar/vls128_roof/special_command',
                                                             VelodyneSpecialCommands)
+
+        rospy.wait_for_service('/sensor/lidar/vls128_roof/set_configuration')
+        rospy.wait_for_service('/sensor/lidar/vls128_roof/request_configuration')
+        rospy.wait_for_service('/sensor/lidar/vls128_roof/special_command')
+
+        rospy.loginfo("All Velodyne configuration services available")
 
         # Get current conf and change the desired settings
         get_config_request = VelodyneRequestConfigurationRequest()

@@ -146,22 +146,22 @@ class VelodyneConfiguration:
     @staticmethod
     def interpret_diagnostic_data(board, name, raw_val):
         if board not in VelodyneConfiguration.__diagnostic_data_interpreter:
-            raise NameError("board position mus be top or bot not %s ", board)
+            raise NameError("board position mus be top or bot not %s " % board)
         if name in VelodyneConfiguration.__diagnostic_data_interpreter[board]:
             op = VelodyneConfiguration.__diagnostic_data_interpreter[board][name]
             return op(raw_val)
         else:
-            raise NameError("Diagnostic data %s name not accepted", name)
+            raise NameError("Diagnostic data %s name not accepted" % name)
 
     @staticmethod
     def check_diagnostic_data_in_range(board, name, interpreted_val):
         if board not in VelodyneConfiguration.__operational_ranges:
-            raise NameError("board position mus be top or bot not %s ", board)
+            raise NameError("board position mus be top or bot not %s " % board)
         if name in VelodyneConfiguration.__diagnostic_data_interpreter[board]:
             val_range = VelodyneConfiguration.__operational_ranges[board][name]
             return val_range[0] < interpreted_val < val_range[1]
         else:
-            raise NameError("Diagnostic data %s name not accepted", name)
+            raise NameError("Diagnostic data %s name not accepted" % name)
 
     @staticmethod
     def check_rpm_soll_val(soll_val):
@@ -203,9 +203,7 @@ class Configurator:
             print(e)
             raise RuntimeError from e
 
-        print('Sensor laser is %b, motor rpm is %i',
-              cfg.conf['laser'], cfg.conf['rpm'])
-
+        print('Sensor laser is %b, motor rpm is %i' % (cfg.conf['laser'], cfg.conf['rpm']))
 
     def _update_conf_from_snapshot(self):
         # Download a temporal snapshot to get the current state of the sensor
@@ -234,14 +232,14 @@ class Configurator:
             response = urllib.request.urlopen(url, timeout=5)
             time.sleep(1.2)
         except HTTPError as error:
-            print('HTTP Error: Data not retrieved because %s\nURL: %s', error, url)
+            print('HTTP Error: Data not retrieved because %s\nURL: %s' % (error, url))
             raise Exception('Fail to communicate with sensor') from error
         except URLError as error:
             if isinstance(error.reason, socket.timeout):
-                print('socket timed out - URL %s', url)
+                print('socket timed out - URL %s' % url)
                 raise Exception('Fail to communicate with sensor') from error
             else:
-                print('some other error happened: %s', error)
+                print('some other error happened: %s' % error)
                 raise Exception('Fail to communicate with sensor') from error
 
         if response:
@@ -301,14 +299,14 @@ class Configurator:
             elif setting_id == 'phase':
                 current_phaselock = self.bool_to_on_off(self.config.conf["phaselock"])
                 if VelodyneConfiguration.check_phase_lock_soll_val(value):
-                    cmd = {"enabled": current_phaselock, "offset": str(value), "offsetInput": str(value / 100)}
+                    cmd = {"enabled": current_phaselock, "offset": str(value), "offsetInput": str(value / 100.0)}
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + 'phaselock',
                                         urlencode(cmd))
                     if rc:
                         self.config.conf[setting_id] = value
 
                 else:
-                    raise ValueError("The desired phase lock value %s is invalid", str(value))
+                    raise ValueError("The desired phase lock value %s is invalid" % str(value))
 
             elif setting_id == 'phaselock':
                 current_phase_value = self.config.conf["phase"]
@@ -352,19 +350,19 @@ class Configurator:
                         self.reset_sensor()
 
                 else:
-                    raise NameError("The passed setting is not recognised Name:%s ", setting_id)
+                    raise NameError("The passed setting is not recognised Name:%s " % setting_id)
 
             if not rc:
-                raise Exception('Fail to set setting in the sensor Name:%s ',setting_id)
+                raise Exception('Fail to set setting in the sensor Name:%s ' % setting_id)
 
         else:
-            raise NameError("Parameter name not found. Name:%s ", setting_id)
+            raise NameError("Parameter name not found. Name:%s " % setting_id)
 
     def get_setting(self, setting_id):
         try:
             value = self.config.conf[setting_id]
         except KeyError:
-            print(" %s is not a valid setting", setting_id)
+            print(" %s is not a valid setting" % setting_id)
             return None
         return value
 
@@ -397,7 +395,7 @@ class Configurator:
                 try:
                     interp_value = VelodyneConfiguration.interpret_diagnostic_data(t_b, name, value)
                 except NameError as e:
-                    print("Value of %s %s can not be interpreted, leaving it as it is", t_b, name)
+                    print("Value of %s %s can not be interpreted, leaving it as it is" % (t_b, name))
 
                 interpreted_diagnostics[t_b][name] = interp_value
 
@@ -407,7 +405,7 @@ class Configurator:
         try:
             in_range = VelodyneConfiguration.check_diagnostic_data_in_range(t_b, diag_par, value)
         except NameError:
-            print("Value of %s %s can not be checked, no defined ranges", t_b, diag_par)
+            print("Value of %s %s can not be checked, no defined ranges" % (t_b, diag_par))
             raise NameError("Parameters ranges not defined for check")
         return in_range
 
