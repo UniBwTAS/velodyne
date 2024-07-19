@@ -35,13 +35,12 @@ class ConfiguratorNode:
         rospy.loginfo("Velodyne configuration node initializing")
         rospy.init_node("velodyne_configuration_node", anonymous=False)
 
-        #ns = '/sensor/lidar/vls128_roof'
-        #parameter_name = rospy.resolve_name('~ns_transform')
-        #if rospy.has_param(parameter_name):
+        # ns = '/sensor/lidar/vls128_roof'
+        # parameter_name = rospy.resolve_name('~ns_transform')
+        # if rospy.has_param(parameter_name):
         #    ns = rospy.get_param(parameter_name)
-        #else:
+        # else:
         #    rospy.loginfo("name space  parameter not found, using default ns %s" % ns)
-
 
         velodyne_ip = '0.0.0.1'
         parameter_name = rospy.resolve_name('~velodyne_ip')
@@ -60,9 +59,9 @@ class ConfiguratorNode:
         else:
             rospy.loginfo("snapshot_path parameter not found, using default folder %s" % self.snapshot_path)
 
-        print("Create configuration Object")
+        rospy.loginfo("Create configuration Object")
         self.configurator = Configurator(velodyne_ip)  # Loads config object with current state
-        print("Configuration node ready")
+        rospy.loginfo("Configuration node ready")
 
         self._set_service = rospy.Service('set_configuration', VelodyneSetConfiguration,
                                           self.set_configuration)
@@ -80,16 +79,14 @@ class ConfiguratorNode:
                 response.all_in_range = True
                 outside_range = []
                 for b in diag:
-                    print(b)
                     for n in diag[b]:
-                        print(n)
                         try:
                             in_range = self.configurator.check_diagnostics_parameter(b, n, diag[b][n])
                         except NameError as e:
-                            print("No ranges for parameter", b, n)
+                            rospy.logwarn("No ranges for parameter", b, n)
                             in_range = True
                         if not in_range:
-                            print("parameter %s %s is outside operational ranges [%f]" % (b, n, diag[b][n]))
+                            rospy.logerr("parameter %s %s is outside operational ranges [%f]" % (b, n, diag[b][n]))
                             response.all_in_range = False
                             outside_range.append(b + "_" + n)
                 response.parameters = outside_range
@@ -108,13 +105,13 @@ class ConfiguratorNode:
                 response.success = False
         except RuntimeError as e:
             response.success = False
-            print("Caught Runtime Error while getting current configuration")
-            print(e.args)
+            rospy.logerr("Caught Runtime Error while getting current configuration")
+            rospy.logerr(e.args)
 
         return response
 
     def get_configuration(self, request):
-        print("Request to get current configuration")
+        rospy.loginfo("Request to get current configuration")
         response = VelodyneRequestConfigurationResponse()
         try:
             current_conf = self.configurator.get_current_configuration().conf
@@ -140,13 +137,13 @@ class ConfiguratorNode:
             response.net_addr = current_conf["net_addr"]
             response.net_mask = current_conf["net_mask"]
             response.net_gateway = current_conf["net_gateway"]
-            #response.net_dhcp = current_conf["net_dhcp"]
-            #response.net_mac_addr = current_conf["net_mac_addr"]
+            # response.net_dhcp = current_conf["net_dhcp"]
+            # response.net_mac_addr = current_conf["net_mac_addr"]
 
             response.success = True
         except RuntimeError as e:
-            print("Caught Runtime Error while getting current configuration")
-            print(e.args)
+            rospy.logerr("Caught Runtime Error while getting current configuration")
+            rospy.logerr(e.args)
 
             response.success = False
 
@@ -155,7 +152,7 @@ class ConfiguratorNode:
         return response
 
     def set_configuration(self, request):
-        print("Request to set configuration")
+        rospy.loginfo("Request to set configuration")
         # Find what is different
         changes = {}
         if request.rpm != self.configurator.get_setting("rpm"):
@@ -190,19 +187,19 @@ class ConfiguratorNode:
             try:
                 self.configurator.set_setting(k, changes[k])
             except ValueError as e:
-                print("Caught ValueError Error while setting configuration")
-                print(e.args)
+                rospy.logerr("Caught ValueError Error while setting configuration")
+                rospy.logerr(e.args)
                 response.success = False
                 return response
 
             except NameError as e:
-                print("Caught NameError Error while setting configuration")
-                print(e.args)
+                rospy.logerr("Caught NameError Error while setting configuration")
+                rospy.logerr(e.args)
                 response.success = False
                 return response
             except Exception as e:
-                print("Caught Exception Error while setting configuration")
-                print(e.args)
+                rospy.logerr("Caught Exception Error while setting configuration")
+                rospy.logerr(e.args)
                 response.success = False
                 return response
 
@@ -215,10 +212,8 @@ if __name__ == "__main__":
     try:
         ConfiguratorNode()
     except Exception as inst:
-        print(type(inst))  # the exception type
-
-        print(inst.args)  # arguments stored in .args
-
-        print(inst)
+        rospy.logerr(type(inst))
+        rospy.logerr(inst.args)
+        rospy.logerr(inst)
 
     rospy.spin()

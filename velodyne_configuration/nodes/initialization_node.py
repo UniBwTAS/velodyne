@@ -45,8 +45,6 @@ def request_config_from_current_config(current):
 
     return request
 
-# Todo name space
-
 if __name__ == "__main__":
     try:
         rospy.init_node("velodyne_initialization_node", anonymous=True)
@@ -164,8 +162,8 @@ if __name__ == "__main__":
 
 
     except Exception as inst:
-        print(type(inst))  # the exception type
-        print(inst.args)  # arguments stored in .args
-        print(inst)
+        rospy.logerr(type(inst))  # the exception type
+        rospy.logerr(inst.args)  # arguments stored in .args
+        rospy.logerr(inst)
 
 

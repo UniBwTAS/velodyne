@@ -11,9 +11,6 @@ import socket
 import math
 import tempfile
 
-
-# TODO fill initial config with snapshot
-
 class VelodyneConfiguration:
 
     def __init__(self):
@@ -259,7 +256,7 @@ class Configurator:
             return 'off'
 
     def set_setting(self, setting_id, value):
-        print("Settin %s to %r" % (setting_id, value))
+        print("Setting %s to %r" % (setting_id, value))
         if setting_id in VelodyneConfiguration.conf_ids:
             rc = None
             if setting_id == 'rpm':
@@ -301,14 +298,12 @@ class Configurator:
 
             elif setting_id == 'phase':
                 current_phaselock = self.bool_to_on_off(self.config.conf["phaselock"])
-                #print(current_phaselock)
+
                 if VelodyneConfiguration.check_phase_lock_soll_val(value):
 
                     cmd = {"enabled": current_phaselock, "offset": str(value), "offsetInput": str(value / 100.0)}
-                 #   print(cmd)
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + '/phaselock',
                                         urlencode(cmd))
-                  #  print("setted phase to desired value")
                     if rc:
                         self.config.conf[setting_id] = value
 
@@ -318,17 +313,11 @@ class Configurator:
             elif setting_id == 'phaselock':
                 current_phase_value = self.config.conf["phase"]
                 str_value = self.bool_to_on_off(value)
-                #print(current_phase_value)
-                #print(str_value)
                 if VelodyneConfiguration.check_on_off_soll_val(str_value):
                     cmd = {"enabled": str_value, "offset": str(current_phase_value),
                            "offsetInput": str(current_phase_value / 100)}
-                    #print(cmd)
-                    #print(self.config.get_command_url("set_setting", self.Base_URL) + 'phaselock')
-                    #print(urlencode(cmd))
                     rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + '/phaselock',
                                         urlencode(cmd))
-                    print("phaselock set to desired value")
                     if rc:
                         self.config.conf[setting_id] = value
                 else:
@@ -422,9 +411,7 @@ class Configurator:
 
     def get_current_configuration(self):
         try:
-            print("Get status")
             status = self._request_json('get_status')
-            print("Status received")
         except Exception as e:
             print(e)
             raise RuntimeError from e
@@ -443,9 +430,7 @@ class Configurator:
         self.config.conf["ns_per_rev"] = status["motor"]["ns_per_rev"]
         self.config.conf["laser"] = True if status["laser"]["state"] == "On" else False
 
-        print("Get Snapshot")
         self._update_conf_from_snapshot()
-        print("Snapshot received")
         return self.config
 
     def download_snapshot(self, folder_path, file_name=None):
