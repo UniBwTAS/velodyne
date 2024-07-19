@@ -203,14 +203,16 @@ class Configurator:
             print(e)
             raise RuntimeError from e
 
-        print('Sensor laser is %b, motor rpm is %i' % (cfg.conf['laser'], cfg.conf['rpm']))
+        print('Sensor laser is %r, motor rpm is %i' % (cfg.conf['laser'], cfg.conf['rpm']))
 
     def _update_conf_from_snapshot(self):
         # Download a temporal snapshot to get the current state of the sensor
         url = VelodyneConfiguration.get_command_url("get_snapshot", self.Base_URL)
         with tempfile.NamedTemporaryFile() as temp_file:
             temp_file_path = temp_file.name
+            # ToDo Timeout
             urllib.request.urlretrieve(url, temp_file_path)
+            time.sleep(2.0)
             with open(temp_file_path, 'r') as file:
                 son = json.load(file)
 
@@ -257,6 +259,7 @@ class Configurator:
             return 'off'
 
     def set_setting(self, setting_id, value):
+        print("Settin %s to %r" % (setting_id, value))
         if setting_id in VelodyneConfiguration.conf_ids:
             rc = None
             if setting_id == 'rpm':
@@ -298,10 +301,14 @@ class Configurator:
 
             elif setting_id == 'phase':
                 current_phaselock = self.bool_to_on_off(self.config.conf["phaselock"])
+                #print(current_phaselock)
                 if VelodyneConfiguration.check_phase_lock_soll_val(value):
+
                     cmd = {"enabled": current_phaselock, "offset": str(value), "offsetInput": str(value / 100.0)}
-                    rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + 'phaselock',
+                 #   print(cmd)
+                    rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + '/phaselock',
                                         urlencode(cmd))
+                  #  print("setted phase to desired value")
                     if rc:
                         self.config.conf[setting_id] = value
 
@@ -311,11 +318,17 @@ class Configurator:
             elif setting_id == 'phaselock':
                 current_phase_value = self.config.conf["phase"]
                 str_value = self.bool_to_on_off(value)
+                #print(current_phase_value)
+                #print(str_value)
                 if VelodyneConfiguration.check_on_off_soll_val(str_value):
                     cmd = {"enabled": str_value, "offset": str(current_phase_value),
                            "offsetInput": str(current_phase_value / 100)}
-                    rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + 'phaselock',
+                    #print(cmd)
+                    #print(self.config.get_command_url("set_setting", self.Base_URL) + 'phaselock')
+                    #print(urlencode(cmd))
+                    rc = self.sensor_do(self.config.get_command_url("set_setting", self.Base_URL) + '/phaselock',
                                         urlencode(cmd))
+                    print("phaselock set to desired value")
                     if rc:
                         self.config.conf[setting_id] = value
                 else:
@@ -348,13 +361,11 @@ class Configurator:
                         self.config.conf[setting_id] = value
                         self.safe_current_config_to_sensor()
                         self.reset_sensor()
-
                 else:
                     raise NameError("The passed setting is not recognised Name:%s " % setting_id)
 
             if not rc:
                 raise Exception('Fail to set setting in the sensor Name:%s ' % setting_id)
-
         else:
             raise NameError("Parameter name not found. Name:%s " % setting_id)
 
@@ -452,8 +463,10 @@ class Configurator:
         file_path = os.path.join(folder_path, file_name)
 
         try:
+            # Todo Time out
             urllib.request.urlretrieve(url, file_path)
             print(f'File downloaded and saved to {file_path}')
+            time.sleep(1.5)
         except Exception as e:
             print(f'Failed to download the file. Error: {e}')
             raise RuntimeError from e

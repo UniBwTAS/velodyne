@@ -49,26 +49,19 @@ def request_config_from_current_config(current):
 
 if __name__ == "__main__":
     try:
-        rospy.init_node("velodyne_configuration_test_node", anonymous=True)
+        rospy.init_node("velodyne_initialization_node", anonymous=True)
         rospy.loginfo("Velodyne initialization node starting")
 
-        ns = '/sensor/lidar/vls128_roof'
-        parameter_name = rospy.resolve_name('~ns_transform')
-        if rospy.has_param(parameter_name):
-            ns = rospy.get_param(parameter_name)
-        else:
-            rospy.loginfo("name space  parameter not found, using default ip %s" % ns)
-
         # Define and wait for the services
-        set_config_srv_proxy = rospy.ServiceProxy('/set_configuration',
+        set_config_srv_proxy = rospy.ServiceProxy('set_configuration',
                                                   VelodyneSetConfiguration)
-        request_config_srv_proxy = rospy.ServiceProxy('/request_configuration',
+        request_config_srv_proxy = rospy.ServiceProxy('request_configuration',
                                                       VelodyneRequestConfiguration)
 
-        rospy.wait_for_service('/sensor/lidar/vls128_roof/set_configuration')
-        rospy.wait_for_service('/sensor/lidar/vls128_roof/request_configuration')
-
-        rospy.loginfo("All Velodyne configuration services available")
+        rospy.loginfo("Velodyne Initialization node: Waiting for services to become available")
+        rospy.wait_for_service(set_config_srv_proxy.resolved_name)
+        rospy.wait_for_service(request_config_srv_proxy.resolved_name)
+        rospy.loginfo("Velodyne Initialization node: Services Found, Initializing")
 
         # Get the desired parameters from the launch file
 
@@ -141,26 +134,32 @@ if __name__ == "__main__":
                 rospy.logerr("The desired phase should be a float value")
                 rospy.logerr(phase)
                 raise TypeError
-            if not phase*100 < 10000:
+            if not phase*100 <= 99999:
                 rospy.logerr("The maximum allowed precision of the phase parameter is 2 decimal digits")
                 rospy.logerr(phase)
                 raise ValueError
         else:
             rospy.loginfo("phase parameter not found, using default value %i" % phase)
 
-        # Request current configuration
-        get_config_request = VelodyneRequestConfigurationRequest()
-        get_config_request.stamp = rospy.Time.now()
-        current_config = request_config_srv_proxy(get_config_request)
-        set_config_request = request_config_from_current_config(current_config)
+        done = False
+        while not done:
+            # Request current configuration
+            get_config_request = VelodyneRequestConfigurationRequest()
+            get_config_request.stamp = rospy.Time.now()
+            current_config = request_config_srv_proxy(get_config_request)
+            set_config_request = request_config_from_current_config(current_config)
 
-        set_config_request.returns.return_mode = return_mode
-        set_config_request.rpm = rpm
-        set_config_request.fov_start = fov_start
-        set_config_request.fov_end = fov_end
-        set_config_request.phaselock = phaselock
-        set_config_request.phase = int(phase*100)
-        set_response = set_config_srv_proxy(set_config_request)
+            set_config_request.returns.return_mode = return_mode
+            set_config_request.rpm = rpm
+            set_config_request.fov_start = fov_start
+            set_config_request.fov_end = fov_end
+            set_config_request.phaselock = phaselock
+            set_config_request.phase = int(phase*100)
+            set_response = set_config_srv_proxy(set_config_request)
+            done = set_response.success
+
+        rospy.loginfo("Velodyne configuration successful, shutting down node")
+
 
 
 
@@ -169,4 +168,4 @@ if __name__ == "__main__":
         print(inst.args)  # arguments stored in .args
         print(inst)
 
-    rospy.spin()
+

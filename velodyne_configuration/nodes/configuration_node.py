@@ -35,22 +35,15 @@ class ConfiguratorNode:
         rospy.loginfo("Velodyne configuration node initializing")
         rospy.init_node("velodyne_configuration_node", anonymous=False)
 
-        ns = '/sensor/lidar/vls128_roof'
-        parameter_name = rospy.resolve_name('~ns_transform')
-        if rospy.has_param(parameter_name):
-            ns = rospy.get_param(parameter_name)
-        else:
-            rospy.loginfo("name space  parameter not found, using default ip %s" % ns)
+        #ns = '/sensor/lidar/vls128_roof'
+        #parameter_name = rospy.resolve_name('~ns_transform')
+        #if rospy.has_param(parameter_name):
+        #    ns = rospy.get_param(parameter_name)
+        #else:
+        #    rospy.loginfo("name space  parameter not found, using default ns %s" % ns)
 
-        self._set_service = rospy.Service('/set_configuration', VelodyneSetConfiguration,
-                                          self.set_configuration)
-        self._get_service = rospy.Service('/request_configuration',
-                                          VelodyneRequestConfiguration,
-                                          self.get_configuration)
-        self._cmd_service = rospy.Service('/special_command', VelodyneSpecialCommands,
-                                          self.send_command)
 
-        velodyne_ip = '192.168.3.201'
+        velodyne_ip = '0.0.0.1'
         parameter_name = rospy.resolve_name('~velodyne_ip')
         if rospy.has_param(parameter_name):
             velodyne_ip = rospy.get_param(parameter_name)
@@ -65,11 +58,19 @@ class ConfiguratorNode:
         if rospy.has_param(parameter_name):
             self.snapshot_path = rospy.get_param(parameter_name)
         else:
-            rospy.loginfo("parameter_name parameter not found, using default ip %s" % self.snapshot_path)
+            rospy.loginfo("snapshot_path parameter not found, using default folder %s" % self.snapshot_path)
 
         print("Create configuration Object")
         self.configurator = Configurator(velodyne_ip)  # Loads config object with current state
         print("Configuration node ready")
+
+        self._set_service = rospy.Service('set_configuration', VelodyneSetConfiguration,
+                                          self.set_configuration)
+        self._get_service = rospy.Service('request_configuration',
+                                          VelodyneRequestConfiguration,
+                                          self.get_configuration)
+        self._cmd_service = rospy.Service('special_commands', VelodyneSpecialCommands,
+                                          self.send_command)
 
     def send_command(self, request):
         response = VelodyneSpecialCommandsResponse()
@@ -189,18 +190,18 @@ class ConfiguratorNode:
             try:
                 self.configurator.set_setting(k, changes[k])
             except ValueError as e:
-                print("Caught ValueError Error while setting current configuration")
+                print("Caught ValueError Error while setting configuration")
                 print(e.args)
                 response.success = False
                 return response
 
             except NameError as e:
-                print("Caught NameError Error while setting current configuration")
+                print("Caught NameError Error while setting configuration")
                 print(e.args)
                 response.success = False
                 return response
             except Exception as e:
-                print("Caught Exception Error while setting current configuration")
+                print("Caught Exception Error while setting configuration")
                 print(e.args)
                 response.success = False
                 return response
