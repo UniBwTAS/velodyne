@@ -10,6 +10,10 @@ from urllib.error import HTTPError, URLError
 import socket
 import math
 import tempfile
+import socket
+
+
+socket.setdefaulttimeout(5)
 
 class VelodyneConfiguration:
 
@@ -207,9 +211,13 @@ class Configurator:
         url = VelodyneConfiguration.get_command_url("get_snapshot", self.Base_URL)
         with tempfile.NamedTemporaryFile() as temp_file:
             temp_file_path = temp_file.name
-            # ToDo Timeout
-            urllib.request.urlretrieve(url, temp_file_path)
-            time.sleep(2.0)
+            try:
+                # ToDo Timeout
+                urllib.request.urlretrieve(url, temp_file_path)
+                time.sleep(2.0)
+            except Exception as e:
+                print(f'Failed to download the file. Error: {e}')
+                raise RuntimeError from e
             with open(temp_file_path, 'r') as file:
                 son = json.load(file)
 
@@ -429,8 +437,11 @@ class Configurator:
         self.config.conf["phase"] = status["motor"]["phase"]
         self.config.conf["ns_per_rev"] = status["motor"]["ns_per_rev"]
         self.config.conf["laser"] = True if status["laser"]["state"] == "On" else False
-
-        self._update_conf_from_snapshot()
+        try:
+            self._update_conf_from_snapshot()
+        except RuntimeError as e:
+            print(e)
+            raise RuntimeError from e
         return self.config
 
     def download_snapshot(self, folder_path, file_name=None):

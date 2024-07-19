@@ -55,12 +55,6 @@ if __name__ == "__main__":
                                                   VelodyneSetConfiguration)
         request_config_srv_proxy = rospy.ServiceProxy('request_configuration',
                                                       VelodyneRequestConfiguration)
-
-        rospy.loginfo("Velodyne Initialization node: Waiting for services to become available")
-        rospy.wait_for_service(set_config_srv_proxy.resolved_name)
-        rospy.wait_for_service(request_config_srv_proxy.resolved_name)
-        rospy.loginfo("Velodyne Initialization node: Services Found, Initializing")
-
         # Get the desired parameters from the launch file
 
         return_mode = VelodyneReturnMode.STRONGEST
@@ -139,14 +133,27 @@ if __name__ == "__main__":
         else:
             rospy.loginfo("phase parameter not found, using default value %i" % phase)
 
+        # Wait for the services to become available
+
+        rospy.loginfo("Velodyne Initialization node: Waiting for services to become available")
+        rospy.wait_for_service(set_config_srv_proxy.resolved_name)
+        rospy.wait_for_service(request_config_srv_proxy.resolved_name)
+        rospy.loginfo("Velodyne Initialization node: Services Found, Initializing")
+
+        # Try to get current confing and set the desired confing
         done = False
         while not done:
-            # Request current configuration
-            get_config_request = VelodyneRequestConfigurationRequest()
-            get_config_request.stamp = rospy.Time.now()
-            current_config = request_config_srv_proxy(get_config_request)
-            set_config_request = request_config_from_current_config(current_config)
+            current_done = False
+            while not current_done:
+                # Request current configuration
+                get_config_request = VelodyneRequestConfigurationRequest()
+                get_config_request.stamp = rospy.Time.now()
+                current_config = request_config_srv_proxy(get_config_request)
+                current_done = current_config.success
+                if not current_config:
+                    rospy.logerr("Failed to get current configuration from sensor. Trying again.")
 
+            set_config_request = request_config_from_current_config(current_config)
             set_config_request.returns.return_mode = return_mode
             set_config_request.rpm = rpm
             set_config_request.fov_start = fov_start
@@ -155,6 +162,8 @@ if __name__ == "__main__":
             set_config_request.phase = int(phase*100)
             set_response = set_config_srv_proxy(set_config_request)
             done = set_response.success
+            if not done:
+                rospy.logerr("Failed to set desired configuration in the sensor. Trying again.")
 
         rospy.loginfo("Velodyne configuration successful, shutting down node")
 
