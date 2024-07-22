@@ -126,6 +126,7 @@ private:
   int _last_azimuth{-1};
   bool _first_rotation{true};
   double _rpm{600.0};
+  uint8_t _last_return_mode{0};
 };
 }  // namespace velodyne_pointcloud
 

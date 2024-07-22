@@ -260,9 +260,25 @@ namespace velodyne_pointcloud
             return;
         }
 
-        if ((_last_azimuth < _cut_angle && _cut_angle <= azimuth) ||
-            (azimuth < _last_azimuth && _cut_angle <= azimuth) ||
-            (azimuth < _last_azimuth && _last_azimuth < _cut_angle)) {
+        // get if the packet is single or double return
+
+        std::size_t ret_mode_data_pos = velodyne_rawdata::BLOCK_SIZE * velodyne_rawdata::BLOCKS_PER_PACKET + velodyne_rawdata::TIMESTAMP_SIZE;
+        uint8_t mode = 0; // 55 .. 58
+        std::memcpy(&mode, &ethernet_msg->payload[ret_mode_data_pos], velodyne_rawdata::RETURN_MODE_BYTE_SIZE);
+
+        // Compare with the return mode of the previous package to detect a change
+        if (_last_return_mode != mode)
+        {
+            // Change in the return mode from previous package
+            // set first rotation flag to tru to discard the current polled packages, as they are
+            // a combination of packages taken with different return modes
+            _first_rotation = true;
+            _last_return_mode = mode;
+        }
+
+        if ((_last_azimuth < _cut_angle && _cut_angle <= azimuth) || //  e.g. la 50,  ca 60,  a 70
+            (azimuth < _last_azimuth && _cut_angle <= azimuth) ||    //  e.g. la 350, ca 5,   a 10
+            (azimuth < _last_azimuth && _last_azimuth < _cut_angle)) {// e.g. la 340, ca 359, a 15
 
             if (_first_rotation) { // discard the first accumulation of packets as it
                 // does not build a complete rotation
@@ -275,13 +291,8 @@ namespace velodyne_pointcloud
 
                 return;
             }
-            // get if the packet is single or double return
 
-            std::size_t ret_mode_data_pos = velodyne_rawdata::BLOCK_SIZE * velodyne_rawdata::BLOCKS_PER_PACKET + velodyne_rawdata::TIMESTAMP_SIZE;
-            uint8_t mode = 0; // 55 .. 58
-            std::memcpy(&mode, &ethernet_msg->payload[ret_mode_data_pos], velodyne_rawdata::RETURN_MODE_BYTE_SIZE);
-
-
+            
             const double frequency = (_rpm / 60.0);
             if (mode == velodyne_rawdata::VLS128_RETURN_MODE_STRONGEST || mode == velodyne_rawdata::VLS128_RETURN_MODE_LAST)
                 _npackets = (int) ceil(velodyne_rawdata::PACKET_RATE_SINGLE_RET_MODE / frequency); // packets per rev
