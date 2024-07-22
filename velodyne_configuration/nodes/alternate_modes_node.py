@@ -90,45 +90,24 @@ class ConfiguratorNode:
             print("fail to get configuration")
             raise RuntimeError
 
-        set_config_request = self.request_config_from_current_config(current_config)
-        set_config_request.returns.return_mode = VelodyneReturnMode.DUAL
-        set_response = self._set_config_srv_proxy(set_config_request)
+        while True:
 
-        spc_cmd_config_request = VelodyneSpecialCommandsRequest()
-        # spc_cmd_config_request.stamp = rospy.Time.now()
-        spc_cmd_config_request.command = VelodyneSpecialCommandsRequest.DIAGNOSTICS
-
-        spc_cmd_response = self._special_config_srv_proxy(spc_cmd_config_request)
-
-        if spc_cmd_response.success:
-            print("all parameters within the operational range")
-        else:
-            print("parameter outside its operational range!")
-            for p in spc_cmd_response.parameters:
-                print(p)
-
-        spc_cmd_config_request = VelodyneSpecialCommandsRequest()
-        # spc_cmd_config_request.stamp = rospy.Time.now()
-        spc_cmd_config_request.command = VelodyneSpecialCommandsRequest.DOWNLOAD_SNAPSHOT
-
-        spc_cmd_response = self._special_config_srv_proxy(spc_cmd_config_request)
-
-        spc_cmd_config_request = VelodyneSpecialCommandsRequest()
-        # spc_cmd_config_request.stamp = rospy.Time.now()
-        spc_cmd_config_request.command = VelodyneSpecialCommandsRequest.RESET_SENSOR
-
-        spc_cmd_response = self._special_config_srv_proxy(spc_cmd_config_request)
-
-        # Get current conf and change the desired settings
-        get_config_request = VelodyneRequestConfigurationRequest()
-        get_config_request.stamp = rospy.Time.now()
-        current_config = self._request_config_srv_proxy(get_config_request)
-        set_config_request = self.request_config_from_current_config(current_config)
-        set_config_request.returns.return_mode = VelodyneReturnMode.STRONGEST
-        set_config_request.rpm = 300
-        set_config_request.fov_start = 90
-        set_config_request.fov_end = 180
-        set_response = self._set_config_srv_proxy(set_config_request)
+            # Get current conf and change the desired settings
+            get_config_request = VelodyneRequestConfigurationRequest()
+            get_config_request.stamp = rospy.Time.now()
+            current_config = self._request_config_srv_proxy(get_config_request)
+            set_config_request = self.request_config_from_current_config(current_config)
+            set_config_request.returns.return_mode = VelodyneReturnMode.STRONGEST
+            set_response = self._set_config_srv_proxy(set_config_request)
+            rospy.sleep(2)
+            # Get current conf and change the desired settings
+            get_config_request = VelodyneRequestConfigurationRequest()
+            get_config_request.stamp = rospy.Time.now()
+            current_config = self._request_config_srv_proxy(get_config_request)
+            set_config_request = self.request_config_from_current_config(current_config)
+            set_config_request.returns.return_mode = VelodyneReturnMode.DUAL
+            set_response = self._set_config_srv_proxy(set_config_request)
+            rospy.sleep(2)
 
     def request_config_from_current_config(self, current):
         set_config_request = VelodyneSetConfigurationRequest()
