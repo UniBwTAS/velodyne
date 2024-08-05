@@ -1,0 +1,14 @@
+<class_libraries>
+
+  <library path="lib/libpacketpc_nodelet">
+    <class name="velodyne_packet_pointcloud/PacketpcNodelet"
+           type="velodyne_packet_pointcloud::PacketpcNodelet"
+           base_class_type="nodelet::Nodelet">
+      <description>
+        Transforms packets into PointCloud2 and publish them as they arrive.
+      </description>
+    </class>
+  </library>
+
+
+</class_libraries>
