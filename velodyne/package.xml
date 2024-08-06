@@ -19,6 +19,7 @@
   <exec_depend>velodyne_msgs</exec_depend>
   <exec_depend>velodyne_pointcloud</exec_depend>
   <exec_depend>velodyne_configuration</exec_depend>
+  <exec_depend>velodyne_packet_pointcloud</exec_depend>
 
   <export>
     <metapackage/>
