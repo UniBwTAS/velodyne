@@ -45,7 +45,8 @@ namespace velodyne_packet_pointcloud
             iter_ring(cloud, "ring"),
             iter_intensity(cloud, "intensity"),
             iter_laser_id(cloud, "laser_id"),
-            iter_first_ret(cloud, "first_return_flag")
+            iter_first_ret(cloud, "first_return_flag"),
+            raw_data_ptr_(std::make_shared<velodyne_rawdata::RawData>())
     {
         this->sensor_frame = sensor_frame;
 
@@ -60,7 +61,7 @@ namespace velodyne_packet_pointcloud
 
     void Unpacker::start_listening(ros::NodeHandle &nh, const std::string ethernet_msgs_topic)
     {
-        output_ = nh.advertise<velodyne_msgs::VelodynePacketPointCloud>("velodyne_packets_points", 10);
+        output_ = nh.advertise<sensor_msgs::PointCloud2>("velodyne_packets_points", 10);
         output_ret_mode_ = nh.advertise<velodyne_msgs::VelodyneReturnMode>("velodyne_return_mode", 10, true);
         velodyne_ethernet_msgs_ = nh.subscribe(ethernet_msgs_topic, 10 * 604, &Unpacker::processEthernetMsgs,
                                                this);
@@ -111,6 +112,16 @@ namespace velodyne_packet_pointcloud
         // contents of the setup function in base class ( no scan message to pas to this function)
         set_return_mode(return_mode);
 
+
+        manage_tf_buffer();
+        cloud.header.stamp = packetMsg.stamp;
+        cloud.data.clear();
+        cloud.data.resize(points_per_packet * cloud.point_step);
+        cloud.width = 1;
+        cloud.height = 0;// starts at 0 and increases with each succes full call to add point
+        cloud.is_dense = true;
+
+
         iter_x = sensor_msgs::PointCloud2Iterator<float>(cloud, "x");
         iter_y = sensor_msgs::PointCloud2Iterator<float>(cloud, "y");
         iter_z = sensor_msgs::PointCloud2Iterator<float>(cloud, "z");
@@ -125,14 +136,6 @@ namespace velodyne_packet_pointcloud
         iter_laser_id = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud, "laser_id");
         iter_first_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud, "first_return_flag");
 
-
-        manage_tf_buffer();
-        cloud.header.stamp = packetMsg.stamp;
-        cloud.data.clear();
-        cloud.data.resize(points_per_packet * cloud.point_step);
-        cloud.width = 1;
-        cloud.height = 0;// starts at 0 and increases with each succesfull call to add point
-        cloud.is_dense = true;
 
         if (!computeTransformToTarget(packetMsg.stamp))
         {
@@ -162,7 +165,7 @@ namespace velodyne_packet_pointcloud
     Unpacker::addPoint(float x, float y, float z, const uint16_t ring, const uint16_t azimuth, const float distance,
                        const float intensity, const float time)
     {
-        uint64_t offset = ring + cloud.height * config_.init_width;
+        uint64_t offset = cloud.height * config_.init_width;
         if (!pointInRange(distance))
         {
             // convert polar coordinates to Euclidean XYZ
@@ -198,8 +201,8 @@ namespace velodyne_packet_pointcloud
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = 0;
             *(iter_first_ret + offset) = 0;
-
         }
+        ++cloud.height;
     }
 
     void
@@ -209,10 +212,7 @@ namespace velodyne_packet_pointcloud
                        const uint8_t first_return_flag)
     {
 
-        const uint64_t off_sec_ret =
-                (1 - first_return_flag) * (packets_in_scan * config_.points_per_packet / 2);
-        const uint64_t off_first_ret = ring + rotation_segment * config_.init_width;
-        const uint64_t offset = off_first_ret + off_sec_ret;
+        const uint64_t offset = cloud.height;
 
         if (pointInRange(distance))
         {
@@ -266,6 +266,13 @@ namespace velodyne_packet_pointcloud
                                             const uint8_t retro_ghost, const uint8_t interference,
                                             const uint8_t sun_lvl, const uint8_t confidence)
     {
+        (void)drop;
+        (void)retro_shadow;
+        (void)range_limited;
+        (void)retro_ghost;
+        (void)interference;
+        (void)sun_lvl;
+        (void)confidence;
 
         ROS_WARN_STREAM_THROTTLE(60,
                                  "Recived packet with dual confidence return mode, but configured point cloud is EXTENDED,"
