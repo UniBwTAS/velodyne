@@ -114,13 +114,13 @@ namespace velodyne_packet_pointcloud
 
 
         manage_tf_buffer();
+        packets_in_scan = 1; // must be ste to at least one
         cloud.header.stamp = packetMsg.stamp;
         cloud.data.clear();
         cloud.data.resize(points_per_packet * cloud.point_step);
         cloud.width = 1;
         cloud.height = 0;// starts at 0 and increases with each succes full call to add point
-        cloud.is_dense = true;
-
+        cloud.is_dense = false;
 
         iter_x = sensor_msgs::PointCloud2Iterator<float>(cloud, "x");
         iter_y = sensor_msgs::PointCloud2Iterator<float>(cloud, "y");
@@ -147,9 +147,13 @@ namespace velodyne_packet_pointcloud
             // fixed frame not available
             return;
         }
+        ROS_DEBUG_STREAM("Unpacking" << cloud.height * cloud.width
+                                      << " Velodyne points, time: " << cloud.header.stamp);
 
-        raw_data_ptr_->unpack(packetMsg, *this,
-                              packetMsg.stamp, 0);
+        raw_data_ptr_->unpack(packetMsg, *this,packetMsg.stamp,
+                              0); // todo: this may have to be a running number
+        ROS_DEBUG_STREAM("Publishing" << cloud.height * cloud.width
+                                      << " Velodyne points, time: " << cloud.header.stamp);
 
 
         output_.publish(this->finishCloud(packetMsg.stamp));
@@ -158,6 +162,7 @@ namespace velodyne_packet_pointcloud
         velodyne_msgs::VelodyneReturnMode retmode_msg;
         if (this->get_return_mode(retmode_msg))
             output_ret_mode_.publish(retmode_msg);
+
 
     }
 

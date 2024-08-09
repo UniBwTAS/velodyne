@@ -753,6 +753,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
               float point_time = 0;
 
               //To which firing seq does this block belong in the package
+              // In dual return there is only 1 fire sequence per package, so this is always the first one (0)
               const uint8_t  firing_seq_in_package = 0;
 
               // To which firing sequence does this block belongs in the scan
@@ -817,6 +818,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   std::uint16_t rotation_segment = ((7 - (laser_number - (8 * std::floor(laser_number / 8)))) * 9) +
                                                    firing_seq_in_scan;
 
+                  // ToDo fix for continuous streaming
                   while (rotation_segment >= num_firing_sequences_in_one_scan) {
                       rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
                   }
