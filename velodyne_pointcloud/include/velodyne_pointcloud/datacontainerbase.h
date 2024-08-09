@@ -136,10 +136,17 @@ public:
   virtual void addPoint(float x, float y, float z, const uint16_t ring,
                        const uint16_t azimuth, const float distance,
                        const float intensity, const float time,
-                       const uint32_t sub_segment, const uint16_t  rotation_segment,
-                       const uint16_t  firing_bin, const uint8_t laser_id,
+                       const uint32_t sub_segment,
+                       const uint16_t  rotation_segment,
+                       const uint16_t  firing_bin,
+                       const uint8_t laser_id,
                        const uint8_t first_return_flag)
   {
+      (void)sub_segment;
+      (void)rotation_segment;
+      (void)firing_bin;
+      (void)laser_id;
+      (void)first_return_flag;
     addPoint(x, y, z, ring, azimuth, distance, intensity, time);
   }
 
@@ -148,7 +155,8 @@ public:
                                        const float intensity, const float time,
                                        const uint32_t sub_segment,
                                        const uint16_t rotation_segment,
-                                       const uint16_t firing_bin, const uint8_t laser_id,
+                                       const uint16_t firing_bin,
+                                       const uint8_t laser_id,
                                        const uint8_t first_return_flag,
                                        const uint8_t drop,
                                        const uint8_t retro_shadow,
@@ -157,7 +165,19 @@ public:
                                        const uint8_t interference,
                                        const uint8_t sun_lvl,
                                        const uint8_t confidence)
-  {
+{
+      (void)sub_segment;
+      (void)rotation_segment;
+      (void)firing_bin;
+      (void)laser_id;
+      (void)first_return_flag;
+      (void)drop;
+      (void)retro_shadow;
+      (void)range_limited;
+      (void)retro_ghost;
+      (void)interference;
+      (void)sun_lvl;
+      (void)confidence;
       addPoint(x, y, z, ring, azimuth, distance, intensity, time);
   }
 
