@@ -710,8 +710,10 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                       firing_seq_in_scan;
 
               // for streaming point cloud we do not want to execute this while loop
+              // At position 0 rotation_segment can't be over the limit of segments in one scan anyway
               if(packet_pos_in_scan > 0)
               {
+                  // Loop over the limit of segments in one scan (num_firing_sequences_in_one_scan)
                   while (rotation_segment >= num_firing_sequences_in_one_scan)
                   {
                       rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
@@ -818,9 +820,14 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   std::uint16_t rotation_segment = ((7 - (laser_number - (8 * std::floor(laser_number / 8)))) * 9) +
                                                    firing_seq_in_scan;
 
-                  // ToDo fix for continuous streaming
-                  while (rotation_segment >= num_firing_sequences_in_one_scan) {
-                      rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
+                  // At position 0 rotation_segment can't be over the limit of segments in one scan anyway
+                  if(packet_pos_in_scan > 0)
+                  {
+                      // Loop over the limit of segments in one scan (num_firing_sequences_in_one_scan)
+                      while (rotation_segment >= num_firing_sequences_in_one_scan)
+                      {
+                          rotation_segment = rotation_segment - num_firing_sequences_in_one_scan;
+                      }
                   }
 
                   // check if first and second block are the same for this position,
