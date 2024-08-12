@@ -9,7 +9,6 @@ add_message_files(
         VelodynePacket.msg
         VelodyneScan.msg
         VelodyneReturnMode.msg
-        VelodynePacketPointCloud.msg
 )
 
 add_service_files(

@@ -9,7 +9,6 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <ethernet_msgs/Packet.h>
 #include <velodyne_msgs/VelodyneReturnMode.h>
-#include <velodyne_msgs/VelodynePacketPointCloud.h>
 #include <velodyne_pointcloud/calibration.h>
 #include <velodyne_pointcloud/datacontainerbase.h>
 #include <velodyne_pointcloud/rawdata.h>
