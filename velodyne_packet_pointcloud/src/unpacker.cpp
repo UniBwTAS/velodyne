@@ -109,10 +109,10 @@ namespace velodyne_packet_pointcloud
     void
     Unpacker::processPacket(const velodyne_msgs::VelodynePacket &packetMsg, const uint8_t return_mode)
     {
-        // contents of the setup function in base class ( no scan message to pas to this function)
+        // contents of the setup function in base class ( no scan message to pass to this function)
         set_return_mode(return_mode);
 
-
+        cloud.reset(new sensor_msgs::PointCloud2(cloud_template));
         manage_tf_buffer();
         packets_in_scan = 1; // must be ste to at least one
         cloud->header.stamp = packetMsg.stamp;
