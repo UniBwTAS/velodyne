@@ -32,65 +32,65 @@ namespace velodyne_pointcloud {
             "retro_ghost", 1, sensor_msgs::PointField::UINT8,
             "interference", 1, sensor_msgs::PointField::UINT8,
             "sun_lvl", 1, sensor_msgs::PointField::UINT8,
-            "confidence", 1, sensor_msgs::PointField::UINT8), iter_x(cloud, "x"),
-          iter_y(cloud,"y"),
-          iter_z(cloud,"z"),
-          iter_distance(cloud,"distance"),
-          iter_time(cloud,"time"),
-          iter_sub_segment(cloud,"sub_segment"),
-          iter_rotation_segment(cloud,"rotation_segment"),
-          iter_azimuth(cloud,"azimuth"),
-          iter_firing_bin(cloud,"firing_bin"),
-          iter_ring(cloud,"ring"),
-          iter_intensity(cloud,"intensity"),
-          iter_laser_id(cloud,"laser_id"),
-          iter_first_ret(cloud,"first_return_flag"),
-          iter_drop(cloud,"drop"),
-          iter_retro_shadow(cloud,"retro_shadow"),
-          iter_range_limited(cloud,"range_limited"),
-          iter_retro_ghost(cloud,"retro_ghost"),
-          iter_interference(cloud,"interference"),
-          iter_sun_lvl(cloud,"sun_lvl"),
-          iter_confidence(cloud,"confidence")
+            "confidence", 1, sensor_msgs::PointField::UINT8), iter_x(*cloud, "x"),
+          iter_y(*cloud,"y"),
+          iter_z(*cloud,"z"),
+          iter_distance(*cloud,"distance"),
+          iter_time(*cloud,"time"),
+          iter_sub_segment(*cloud,"sub_segment"),
+          iter_rotation_segment(*cloud,"rotation_segment"),
+          iter_azimuth(*cloud,"azimuth"),
+          iter_firing_bin(*cloud,"firing_bin"),
+          iter_ring(*cloud,"ring"),
+          iter_intensity(*cloud,"intensity"),
+          iter_laser_id(*cloud,"laser_id"),
+          iter_first_ret(*cloud,"first_return_flag"),
+          iter_drop(*cloud,"drop"),
+          iter_retro_shadow(*cloud,"retro_shadow"),
+          iter_range_limited(*cloud,"range_limited"),
+          iter_retro_ghost(*cloud,"retro_ghost"),
+          iter_interference(*cloud,"interference"),
+          iter_sun_lvl(*cloud,"sun_lvl"),
+          iter_confidence(*cloud,"confidence")
           {
             }
 
 
     void PointcloudExtendedConfidence::setup(const velodyne_msgs::VelodyneScan::ConstPtr& scan_msg){
         DataContainerBase::setup(scan_msg);
-        iter_x = sensor_msgs::PointCloud2Iterator<float>(cloud, "x");
-        iter_y = sensor_msgs::PointCloud2Iterator<float>(cloud, "y");
-        iter_z = sensor_msgs::PointCloud2Iterator<float>(cloud, "z");
-        iter_distance = sensor_msgs::PointCloud2Iterator<float>(cloud,"distance");
-        iter_time = sensor_msgs::PointCloud2Iterator<float>(cloud,"time");
-        iter_sub_segment = sensor_msgs::PointCloud2Iterator<uint32_t>(cloud,"sub_segment");
-        iter_azimuth = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud,"azimuth");
-        iter_rotation_segment = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud,"rotation_segment");
-        iter_firing_bin = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud,"firing_bin");
-        iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud,"ring");
-        iter_intensity = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"intensity");
-        iter_laser_id = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"laser_id");
-        iter_first_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"first_return_flag");
-        iter_drop = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"drop");
-        iter_retro_shadow = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"retro_shadow");
-        iter_range_limited = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"range_limited");
-        iter_retro_ghost = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"retro_ghost");
-        iter_interference = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"interference");
-        iter_sun_lvl = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"sun_lvl");
-        iter_confidence = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud,"confidence");
+        iter_x = sensor_msgs::PointCloud2Iterator<float>(*cloud, "x");
+        iter_y = sensor_msgs::PointCloud2Iterator<float>(*cloud, "y");
+        iter_z = sensor_msgs::PointCloud2Iterator<float>(*cloud, "z");
+        iter_distance = sensor_msgs::PointCloud2Iterator<float>(*cloud,"distance");
+        iter_time = sensor_msgs::PointCloud2Iterator<float>(*cloud,"time");
+        iter_sub_segment = sensor_msgs::PointCloud2Iterator<uint32_t>(*cloud,"sub_segment");
+        iter_azimuth = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud,"azimuth");
+        iter_rotation_segment = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud,"rotation_segment");
+        iter_firing_bin = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud,"firing_bin");
+        iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud,"ring");
+        iter_intensity = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"intensity");
+        iter_laser_id = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"laser_id");
+        iter_first_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"first_return_flag");
+        iter_drop = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"drop");
+        iter_retro_shadow = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"retro_shadow");
+        iter_range_limited = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"range_limited");
+        iter_retro_ghost = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"retro_ghost");
+        iter_interference = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"interference");
+        iter_sun_lvl = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"sun_lvl");
+        iter_confidence = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"confidence");
 
     }
 
     void PointcloudExtendedConfidence::newLine()
     {
-        ++cloud.height;
+        ++cloud->height;
     }
 
     void PointcloudExtendedConfidence::addPoint(float x, float y, float z, const uint16_t ring,
                                       const uint16_t azimuth, const float distance,
                                       const float intensity, const float time)
     {
-        uint64_t  offset = ring + cloud.height * config_.init_width;
+        uint64_t  offset = ring + cloud->height * config_.init_width;
         if (!pointInRange(distance)) {
             // convert polar coordinates to Euclidean XYZ
 

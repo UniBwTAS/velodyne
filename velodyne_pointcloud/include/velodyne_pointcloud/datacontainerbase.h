@@ -53,11 +53,12 @@ public:
   DataContainerBase(const double max_range, const double min_range, const std::string& target_frame,
                     const std::string& fixed_frame, const unsigned int init_width, const unsigned int init_height,
                     const bool is_dense, const unsigned int points_per_packet, int fields, ...)
-    : config_(max_range, min_range, target_frame, fixed_frame, init_width, init_height, is_dense, points_per_packet)
+    : config_(max_range, min_range, target_frame, fixed_frame, init_width, init_height, is_dense, points_per_packet),
+      cloud(new sensor_msgs::PointCloud2)
   {
     va_list vl;
-    cloud.fields.clear();
-    cloud.fields.reserve(fields);
+    cloud->fields.clear();
+    cloud->fields.reserve(fields);
     va_start(vl, fields);
     int offset = 0;
     for (int i = 0; i < fields; ++i)
@@ -66,11 +67,14 @@ public:
       std::string name(va_arg(vl, char*));
       int count(va_arg(vl, int));
       int datatype(va_arg(vl, int));
-      offset = addPointField(cloud, name, count, datatype, offset);
+      offset = addPointField(*cloud, name, count, datatype, offset);
     }
     va_end(vl);
-    cloud.point_step = offset;
-    cloud.row_step = init_width * cloud.point_step;
+    cloud->point_step = offset;
+    cloud->row_step = init_width * cloud->point_step;
+
+    // make a copy of the empy cloud to use as template for new instances.
+      cloud_template = *cloud;
   }
 
   struct Config
@@ -105,26 +109,29 @@ public:
 
   virtual void setup(const velodyne_msgs::VelodyneScan::ConstPtr& scan_msg)
   {
+
+    cloud.reset(new sensor_msgs::PointCloud2(cloud_template));
+
     sensor_frame = scan_msg->header.frame_id;
     manage_tf_buffer();
     packets_in_scan = scan_msg->packets.size();
-    cloud.header.stamp = scan_msg->header.stamp;
-    cloud.data.clear();
+    cloud->header.stamp = scan_msg->header.stamp;
+    cloud->data.clear();
 
     if(last_return_mode == 55 || last_return_mode == 56) {
         config_.points_per_packet = 12 * 32;
-        cloud.data.resize(packets_in_scan * config_.points_per_packet * cloud.point_step);
-        cloud.width = config_.init_width;
+        cloud->data.resize(packets_in_scan * config_.points_per_packet * cloud->point_step);
+        cloud->width = config_.init_width;
     }
     else {
         // Todo: This is only valid for the vls128
         config_.points_per_packet = (12-4)*32; // 8 of 12 blocks have point data in them
-        cloud.data.resize(packets_in_scan * config_.points_per_packet * cloud.point_step );
-        cloud.width = config_.init_width;
+        cloud->data.resize(packets_in_scan * config_.points_per_packet * cloud->point_step );
+        cloud->width = config_.init_width;
     }
 
-    cloud.height = config_.init_height;
-    cloud.is_dense = static_cast<uint8_t>(config_.is_dense);
+    cloud->height = config_.init_height;
+    cloud->is_dense = static_cast<uint8_t>(config_.is_dense);
 
   }
 
@@ -183,25 +190,25 @@ public:
 
   virtual void newLine() = 0;
 
-  virtual const sensor_msgs::PointCloud2& finishCloud(ros::Time stamp)
+  virtual const sensor_msgs::PointCloud2Ptr finishCloud(ros::Time stamp)
   {
 
     if (!config_.target_frame.empty())
     {
-      cloud.header.frame_id = config_.target_frame;
+      cloud->header.frame_id = config_.target_frame;
     }
     else if (!config_.fixed_frame.empty())
     {
-      cloud.header.frame_id = config_.fixed_frame;
+      cloud->header.frame_id = config_.fixed_frame;
     }
     else
     {
-      cloud.header.frame_id = sensor_frame;
+      cloud->header.frame_id = sensor_frame;
     }
-    cloud.header.stamp = stamp;
+    cloud->header.stamp = stamp;
 
-    ROS_DEBUG_STREAM("Prepared cloud width" << cloud.height * cloud.width
-                                            << " Velodyne points, time: " << cloud.header.stamp);
+    ROS_DEBUG_STREAM("Prepared cloud width" << cloud->height * cloud->width
+                                            << " Velodyne points, time: " << cloud->header.stamp);
     return cloud;
   }
 
@@ -248,7 +255,8 @@ public:
     manage_tf_buffer();
   }
 
-  sensor_msgs::PointCloud2 cloud;
+  sensor_msgs::PointCloud2Ptr cloud;
+  sensor_msgs::PointCloud2 cloud_template;
 
   inline bool calculateTransformMatrix(Eigen::Affine3f& matrix, const std::string& target_frame,
                                        const std::string& source_frame, const ros::Time& time)

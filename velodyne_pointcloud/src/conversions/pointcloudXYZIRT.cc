@@ -18,18 +18,18 @@ PointcloudXYZIRT::PointcloudXYZIRT(
         "intensity", 1, sensor_msgs::PointField::FLOAT32,
         "ring", 1, sensor_msgs::PointField::UINT16,
         "time", 1, sensor_msgs::PointField::FLOAT32),
-        iter_x(cloud, "x"), iter_y(cloud, "y"), iter_z(cloud, "z"),
-        iter_ring(cloud, "ring"), iter_intensity(cloud, "intensity"), iter_time(cloud, "time")
+        iter_x(*cloud, "x"), iter_y(*cloud, "y"), iter_z(*cloud, "z"),
+        iter_ring(*cloud, "ring"), iter_intensity(*cloud, "intensity"), iter_time(*cloud, "time")
     {};
 
   void PointcloudXYZIRT::setup(const velodyne_msgs::VelodyneScan::ConstPtr& scan_msg){
     DataContainerBase::setup(scan_msg);
-    iter_x = sensor_msgs::PointCloud2Iterator<float>(cloud, "x");
-    iter_y = sensor_msgs::PointCloud2Iterator<float>(cloud, "y");
-    iter_z = sensor_msgs::PointCloud2Iterator<float>(cloud, "z");
-    iter_intensity = sensor_msgs::PointCloud2Iterator<float>(cloud, "intensity");
-    iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t >(cloud, "ring");
-    iter_time = sensor_msgs::PointCloud2Iterator<float >(cloud, "time");
+    iter_x = sensor_msgs::PointCloud2Iterator<float>(*cloud, "x");
+    iter_y = sensor_msgs::PointCloud2Iterator<float>(*cloud, "y");
+    iter_z = sensor_msgs::PointCloud2Iterator<float>(*cloud, "z");
+    iter_intensity = sensor_msgs::PointCloud2Iterator<float>(*cloud, "intensity");
+    iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t >(*cloud, "ring");
+    iter_time = sensor_msgs::PointCloud2Iterator<float >(*cloud, "time");
   }
 
   void PointcloudXYZIRT::newLine()
@@ -51,7 +51,7 @@ PointcloudXYZIRT::PointcloudXYZIRT(
     *iter_intensity = intensity;
     *iter_time = time;
 
-    ++cloud.width;
+    ++cloud->width;
     ++iter_x;
     ++iter_y;
     ++iter_z;
@@ -60,9 +60,9 @@ PointcloudXYZIRT::PointcloudXYZIRT(
     ++iter_time;
   }
 
-    const sensor_msgs::PointCloud2 & PointcloudXYZIRT::finishCloud(ros::Time stamp)
+    const sensor_msgs::PointCloud2Ptr PointcloudXYZIRT::finishCloud(ros::Time stamp)
     {
-        cloud.data.resize(cloud.point_step * cloud.width * cloud.height);
+        cloud->data.resize(cloud->point_step * cloud->width * cloud->height);
 
         return DataContainerBase::finishCloud(stamp);
     }

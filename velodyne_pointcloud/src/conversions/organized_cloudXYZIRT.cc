@@ -16,8 +16,8 @@ OrganizedCloudXYZIRT::OrganizedCloudXYZIRT(
         "intensity", 1, sensor_msgs::PointField::FLOAT32,
         "ring", 1, sensor_msgs::PointField::UINT16,
         "time", 1, sensor_msgs::PointField::FLOAT32),
-        iter_x(cloud, "x"), iter_y(cloud, "y"), iter_z(cloud, "z"),
-        iter_intensity(cloud, "intensity"), iter_ring(cloud, "ring"), iter_time(cloud, "time")
+        iter_x(*cloud, "x"), iter_y(*cloud, "y"), iter_z(*cloud, "z"),
+        iter_intensity(*cloud, "intensity"), iter_ring(*cloud, "ring"), iter_time(*cloud, "time")
   {
   }
 
@@ -29,17 +29,17 @@ OrganizedCloudXYZIRT::OrganizedCloudXYZIRT(
     iter_ring = iter_ring + config_.init_width;
     iter_intensity = iter_intensity + config_.init_width;
     iter_time = iter_time + config_.init_width;
-    ++cloud.height;
+    ++cloud->height;
   }
 
   void OrganizedCloudXYZIRT::setup(const velodyne_msgs::VelodyneScan::ConstPtr& scan_msg){
     DataContainerBase::setup(scan_msg);
-    iter_x = sensor_msgs::PointCloud2Iterator<float>(cloud, "x");
-    iter_y = sensor_msgs::PointCloud2Iterator<float>(cloud, "y");
-    iter_z = sensor_msgs::PointCloud2Iterator<float>(cloud, "z");
-    iter_intensity = sensor_msgs::PointCloud2Iterator<float>(cloud, "intensity");
-    iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t >(cloud, "ring");
-    iter_time = sensor_msgs::PointCloud2Iterator<float >(cloud, "time");
+    iter_x = sensor_msgs::PointCloud2Iterator<float>(*cloud, "x");
+    iter_y = sensor_msgs::PointCloud2Iterator<float>(*cloud, "y");
+    iter_z = sensor_msgs::PointCloud2Iterator<float>(*cloud, "z");
+    iter_intensity = sensor_msgs::PointCloud2Iterator<float>(*cloud, "intensity");
+    iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t >(*cloud, "ring");
+    iter_time = sensor_msgs::PointCloud2Iterator<float >(*cloud, "time");
   }
 
 

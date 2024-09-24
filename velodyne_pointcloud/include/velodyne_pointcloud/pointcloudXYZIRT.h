@@ -52,7 +52,7 @@ public:
                         const uint16_t azimuth, const float distance,
                         const float intensity, const float time);
 
-  virtual const sensor_msgs::PointCloud2& finishCloud(ros::Time stamp);
+  virtual const sensor_msgs::PointCloud2Ptr finishCloud(ros::Time stamp);
 
   sensor_msgs::PointCloud2Iterator<float> iter_x, iter_y, iter_z, iter_intensity, iter_time;
   sensor_msgs::PointCloud2Iterator<uint16_t> iter_ring;

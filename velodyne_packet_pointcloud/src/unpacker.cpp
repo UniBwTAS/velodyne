@@ -33,19 +33,19 @@ namespace velodyne_packet_pointcloud
                               "intensity", 1, sensor_msgs::PointField::UINT8,
                               "laser_id", 1, sensor_msgs::PointField::UINT8,
                               "first_return_flag", 1, sensor_msgs::PointField::UINT8),
-            iter_x(cloud, "x"),
-            iter_y(cloud, "y"),
-            iter_z(cloud, "z"),
-            iter_distance(cloud, "distance"),
-            iter_time(cloud, "time"),
-            iter_sub_segment(cloud, "sub_segment"),
-            iter_rotation_segment(cloud, "rotation_segment"),
-            iter_azimuth(cloud, "azimuth"),
-            iter_firing_bin(cloud, "firing_bin"),
-            iter_ring(cloud, "ring"),
-            iter_intensity(cloud, "intensity"),
-            iter_laser_id(cloud, "laser_id"),
-            iter_first_ret(cloud, "first_return_flag"),
+            iter_x(*cloud, "x"),
+            iter_y(*cloud, "y"),
+            iter_z(*cloud, "z"),
+            iter_distance(*cloud, "distance"),
+            iter_time(*cloud, "time"),
+            iter_sub_segment(*cloud, "sub_segment"),
+            iter_rotation_segment(*cloud, "rotation_segment"),
+            iter_azimuth(*cloud, "azimuth"),
+            iter_firing_bin(*cloud, "firing_bin"),
+            iter_ring(*cloud, "ring"),
+            iter_intensity(*cloud, "intensity"),
+            iter_laser_id(*cloud, "laser_id"),
+            iter_first_ret(*cloud, "first_return_flag"),
             raw_data_ptr_(std::make_shared<velodyne_rawdata::RawData>())
     {
         this->sensor_frame = sensor_frame;
@@ -115,26 +115,26 @@ namespace velodyne_packet_pointcloud
 
         manage_tf_buffer();
         packets_in_scan = 1; // must be ste to at least one
-        cloud.header.stamp = packetMsg.stamp;
-        cloud.data.clear();
-        cloud.data.resize(points_per_packet * cloud.point_step);
-        cloud.width = 1;
-        cloud.height = 0;// starts at 0 and increases with each succes full call to add point
-        cloud.is_dense = false;
+        cloud->header.stamp = packetMsg.stamp;
+        cloud->data.clear();
+        cloud->data.resize(points_per_packet * cloud->point_step);
+        cloud->width = 1;
+        cloud->height = 0;// starts at 0 and increases with each succes full call to add point
+        cloud->is_dense = false;
 
-        iter_x = sensor_msgs::PointCloud2Iterator<float>(cloud, "x");
-        iter_y = sensor_msgs::PointCloud2Iterator<float>(cloud, "y");
-        iter_z = sensor_msgs::PointCloud2Iterator<float>(cloud, "z");
-        iter_distance = sensor_msgs::PointCloud2Iterator<float>(cloud, "distance");
-        iter_time = sensor_msgs::PointCloud2Iterator<float>(cloud, "time");
-        iter_sub_segment = sensor_msgs::PointCloud2Iterator<uint32_t>(cloud, "sub_segment");
-        iter_azimuth = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud, "azimuth");
-        iter_rotation_segment = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud, "rotation_segment");
-        iter_firing_bin = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud, "firing_bin");
-        iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t>(cloud, "ring");
-        iter_intensity = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud, "intensity");
-        iter_laser_id = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud, "laser_id");
-        iter_first_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(cloud, "first_return_flag");
+        iter_x = sensor_msgs::PointCloud2Iterator<float>(*cloud, "x");
+        iter_y = sensor_msgs::PointCloud2Iterator<float>(*cloud, "y");
+        iter_z = sensor_msgs::PointCloud2Iterator<float>(*cloud, "z");
+        iter_distance = sensor_msgs::PointCloud2Iterator<float>(*cloud, "distance");
+        iter_time = sensor_msgs::PointCloud2Iterator<float>(*cloud, "time");
+        iter_sub_segment = sensor_msgs::PointCloud2Iterator<uint32_t>(*cloud, "sub_segment");
+        iter_azimuth = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud, "azimuth");
+        iter_rotation_segment = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud, "rotation_segment");
+        iter_firing_bin = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud, "firing_bin");
+        iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud, "ring");
+        iter_intensity = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud, "intensity");
+        iter_laser_id = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud, "laser_id");
+        iter_first_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud, "first_return_flag");
 
 
         if (!computeTransformToTarget(packetMsg.stamp))
@@ -147,13 +147,13 @@ namespace velodyne_packet_pointcloud
             // fixed frame not available
             return;
         }
-        ROS_DEBUG_STREAM("Unpacking" << cloud.height * cloud.width
-                                      << " Velodyne points, time: " << cloud.header.stamp);
+        ROS_DEBUG_STREAM("Unpacking" << cloud->height * cloud->width
+                                      << " Velodyne points, time: " << cloud->header.stamp);
 
         raw_data_ptr_->unpack(packetMsg, *this,packetMsg.stamp,
                               0); // todo: this may have to be a running number
-        ROS_DEBUG_STREAM("Publishing" << cloud.height * cloud.width
-                                      << " Velodyne points, time: " << cloud.header.stamp);
+        ROS_DEBUG_STREAM("Publishing" << cloud->height * cloud->width
+                                      << " Velodyne points, time: " << cloud->header.stamp);
 
 
         output_.publish(this->finishCloud(packetMsg.stamp));
@@ -170,7 +170,7 @@ namespace velodyne_packet_pointcloud
     Unpacker::addPoint(float x, float y, float z, const uint16_t ring, const uint16_t azimuth, const float distance,
                        const float intensity, const float time)
     {
-        uint64_t offset = cloud.height * config_.init_width;
+        uint64_t offset = cloud->height * config_.init_width;
         if (!pointInRange(distance))
         {
             // convert polar coordinates to Euclidean XYZ
@@ -207,7 +207,7 @@ namespace velodyne_packet_pointcloud
             *(iter_laser_id + offset) = 0;
             *(iter_first_ret + offset) = 0;
         }
-        ++cloud.height;
+        ++cloud->height;
     }
 
     void
@@ -217,7 +217,7 @@ namespace velodyne_packet_pointcloud
                        const uint8_t first_return_flag)
     {
 
-        const uint64_t offset = cloud.height;
+        const uint64_t offset = cloud->height;
 
         if (pointInRange(distance))
         {
@@ -258,7 +258,7 @@ namespace velodyne_packet_pointcloud
 
         }
 
-        ++cloud.height;
+        ++cloud->height;
 
     }
 
