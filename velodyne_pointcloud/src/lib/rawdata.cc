@@ -730,7 +730,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                       firing_seq_in_scan,
                       laser_number,
                       1,
-                      1,
+                      1*4+1*2+1,
                       point_time,
                       data_container);
           }
@@ -842,11 +842,11 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                   tmp.bytes[1] = second_ret_block.data[k + 1];
                   const float distance_second_return = tmp.uint * VLS128_DISTANCE_RESOLUTION;
 
-                  const uint8_t first_ret_is_last = distance_first_return>=distance_second_return?1:0;
+                  const bool first_ret_is_last = distance_first_return>=distance_second_return?1:0;
 
                   // check if first and second block are the same for this position,
                   // which means no second return was detected
-                  const bool add_invalid = distance_first_return==distance_second_return;
+                  const bool add_invalid = distance_first_return==distance_second_return || distance_second_return==0.0;
 
                   if(current_return_mode == VLS128_RETURN_MODE_DUAL) {
                       calculate_and_add_point_to_container(
@@ -859,7 +859,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               firing_seq_in_scan,
                               laser_number,
                               1,
-                              first_ret_is_last,
+                              1*4+first_ret_is_last*2+add_invalid,
                               point_time,
                               data_container);
 
@@ -873,7 +873,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               firing_seq_in_scan,
                               laser_number,
                               0,
-                              first_ret_is_last ^ 1,
+                              0*4+(!first_ret_is_last) *2+add_invalid,
                               point_time,
                               data_container,
                               add_invalid);
@@ -902,7 +902,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               firing_seq_in_scan,
                               laser_number,
                               1,
-                              first_ret_is_last,
+                              1*4+first_ret_is_last*2+add_invalid,
                               point_time,
                               data_container);
 
@@ -917,7 +917,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               firing_seq_in_scan,
                               laser_number,
                               0,
-                              first_ret_is_last ^ 1,
+                              0*4+(!first_ret_is_last) * 2 + add_invalid,
                               point_time,
                               data_container,
                               add_invalid);

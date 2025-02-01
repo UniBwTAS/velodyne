@@ -26,7 +26,7 @@ PointcloudExtended::PointcloudExtended(
         "intensity", 1, sensor_msgs::PointField::UINT8,
         "laser_id", 1, sensor_msgs::PointField::UINT8,
         "first_return_flag", 1, sensor_msgs::PointField::UINT8,
-        "last_return_flag", 1, sensor_msgs::PointField::UINT8
+        "return_type", 1, sensor_msgs::PointField::UINT8
         ),
 
       iter_x(*cloud, "x"),
@@ -42,7 +42,7 @@ PointcloudExtended::PointcloudExtended(
       iter_intensity(*cloud, "intensity"),
       iter_laser_id(*cloud, "laser_id"),
       iter_first_ret(*cloud, "first_return_flag"),
-      iter_last_ret(*cloud, "last_return_flag")
+      iter_ret_type(*cloud, "return_type")
     {
     }
 
@@ -61,7 +61,7 @@ PointcloudExtended::PointcloudExtended(
     iter_intensity = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"intensity");
     iter_laser_id = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"laser_id");
     iter_first_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"first_return_flag");
-    iter_last_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"last_return_flag");
+    iter_ret_type = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"return_type");
 
   }
 
@@ -93,7 +93,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
     *(iter_ring + offset) = ring;
     *(iter_laser_id + offset) = 0;
     *(iter_first_ret + offset) = 0;
-    *(iter_last_ret + offset) = 0;
+    *(iter_ret_type + offset) = 0;
   } else {
     *(iter_x + offset) = nanf("");
     *(iter_y + offset) = nanf("");
@@ -108,7 +108,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
     *(iter_ring + offset) = ring;
     *(iter_laser_id + offset) = 0;
     *(iter_first_ret + offset) = 0;
-    *(iter_last_ret + offset) = 0;
+    *(iter_ret_type + offset) = 0;
   }
 }
 
@@ -117,7 +117,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
                                     const float intensity, const float time,
                                     const uint32_t sub_segment, const uint16_t  rotation_segment,
                                     const uint16_t  firing_bin, const uint8_t laser_id,
-                                    const uint8_t first_return_flag, const uint8_t last_return_flag)
+                                    const uint8_t first_return_flag, const uint8_t return_type)
   {
 
     const uint64_t  off_sec_ret =
@@ -142,7 +142,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
         *(iter_ring + offset) = ring;
         *(iter_laser_id + offset) = laser_id;
         *(iter_first_ret + offset) = first_return_flag;
-        *(iter_last_ret + offset) = last_return_flag;
+        *(iter_ret_type + offset) = return_type;
     } else {
 
         *(iter_x + offset) = nanf("");
@@ -158,7 +158,7 @@ void PointcloudExtended::addPoint(float x, float y, float z, const uint16_t ring
         *(iter_ring + offset) = ring;
         *(iter_laser_id + offset) = laser_id;
         *(iter_first_ret + offset) = first_return_flag;
-        *(iter_first_ret + offset) = last_return_flag;
+        *(iter_first_ret + offset) = return_type;
     }
 
   }

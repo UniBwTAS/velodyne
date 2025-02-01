@@ -145,8 +145,22 @@ static const int VLS128_RETURN_MODE_DUAL_CONF= 59;
 static const int VLS128_RETURN_MODE_POSITION= 1204;
 static const int VLS128_MODEL_ID_POSITION= 1205;
 
-    static const float  PACKET_RATE_SINGLE_RET_MODE  = 6030.5;
-    static const float  PACKET_RATE_DUAL_RET_MODE  = 18091.36;
+// per point return type 3 Bits first return flag(strongest), is last flag(last), is unique return flag
+static const uint8_t VLS128_RETURN_TYPE_STRONGEST= 4;
+static const uint8_t VLS128_RETURN_TYPE_LAST= 2;
+static const uint8_t VLS128_RETURN_TYPE_STRONGEST_LAST= 6;
+static const uint8_t VLS128_RETURN_TYPE_SECOND_STRONGEST= 0;
+static const uint8_t VLS128_RETURN_TYPE_STRONGEST_LAST_UNIQUE= 7;
+
+static const uint8_t VLS128_RT_S = VLS128_RETURN_TYPE_STRONGEST;
+static const uint8_t VLS128_RT_L = VLS128_RETURN_TYPE_LAST;
+static const uint8_t VLS128_RT_SL = VLS128_RETURN_TYPE_STRONGEST_LAST;
+static const uint8_t VLS128_RT_SS = VLS128_RETURN_TYPE_SECOND_STRONGEST;
+static const uint8_t VLS128_RT_SLU = VLS128_RETURN_TYPE_STRONGEST_LAST_UNIQUE;
+
+
+static const float  PACKET_RATE_SINGLE_RET_MODE  = 6030.5;
+static const float  PACKET_RATE_DUAL_RET_MODE  = 18091.36;
 
 
 /** \brief Raw Velodyne packet.
@@ -294,7 +308,7 @@ private:
                                                      const uint16_t &firing_seq_in_scan,
                                                      const uint8_t &laser_number,
                                                      const uint8_t &first_return_flag,
-                                                     const uint8_t &last_return_flag,
+                                                     const uint8_t &return_type,
                                                      const float time,
                                                      DataContainerBase &data_container,
                                                      const bool add_invalid = false) {
@@ -343,7 +357,7 @@ private:
                                     firing_seq_in_scan,
                                     laser_number,
                                     first_return_flag,
-                                    last_return_flag
+                                    return_type
                                     );
         } else {
             // point is outside the valid angle range
@@ -362,7 +376,7 @@ private:
                                     firing_seq_in_scan,
                                     laser_number,
                                     first_return_flag,
-                                    last_return_flag
+                                    return_type
                                     );
         }
     }
@@ -377,7 +391,7 @@ private:
                                                      const uint16_t &firing_seq_in_scan,
                                                      const uint8_t &laser_number,
                                                      const uint8_t &first_return_flag,
-                                                     const uint8_t &last_return_flag,
+                                                     const uint8_t &return_type,
                                                      const float time,
                                                      DataContainerBase &data_container,
                                                      const bool add_invalid = false) {
@@ -514,7 +528,7 @@ private:
                                                     firing_seq_in_scan,
                                                     laser_number,
                                                     first_return_flag,
-                                                    last_return_flag,
+                                                    return_type,
                                                     drop,
                                                     retro_shadow,
                                                     range_limited,
@@ -539,7 +553,7 @@ private:
                                                     firing_seq_in_scan,
                                                     laser_number,
                                                     first_return_flag,
-                                                    last_return_flag,
+                                                    return_type,
                                                     255,
                                                     255,
                                                     255,

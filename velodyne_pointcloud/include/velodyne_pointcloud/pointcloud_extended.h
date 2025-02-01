@@ -60,7 +60,7 @@ public:
                         const float intensity, const float time,
                         const uint32_t sub_segment, const uint16_t  rotation_segment,
                         const uint16_t  firing_bin, const uint8_t laser_id,
-                        const uint8_t first_return_flag, const uint8_t last_return_flag) override ;
+                        const uint8_t first_return_flag, const uint8_t return_type) override ;
 
 void addPoint_with_confidence(float x, float y, float z, const uint16_t ring,
                               const uint16_t azimuth, const float distance,
@@ -69,7 +69,7 @@ void addPoint_with_confidence(float x, float y, float z, const uint16_t ring,
                               const uint16_t rotation_segment,
                               const uint16_t firing_bin, const uint8_t laser_id,
                               const uint8_t first_return_flag,
-                              const uint8_t last_return_flag,
+                              const uint8_t return_type,
                               const uint8_t drop,
                               const uint8_t retro_shadow,
                               const uint8_t range_limited,
@@ -80,12 +80,12 @@ void addPoint_with_confidence(float x, float y, float z, const uint16_t ring,
 {
     ROS_WARN_STREAM_THROTTLE(60, "Recived packet with dual confidence return mode, but configured point cloud is EXTENDED,"
                                  "Use EXTENDEDCONF to get the confidence information in the cloud");
-    addPoint(x, y, z, ring, azimuth, distance, intensity, time,sub_segment,rotation_segment,firing_bin,laser_id,first_return_flag, last_return_flag);
+    addPoint(x, y, z, ring, azimuth, distance, intensity, time,sub_segment,rotation_segment,firing_bin,laser_id,first_return_flag, return_type);
 }
   sensor_msgs::PointCloud2Iterator<float> iter_x, iter_y, iter_z,  iter_distance, iter_time;
   sensor_msgs::PointCloud2Iterator<uint32_t> iter_sub_segment;
   sensor_msgs::PointCloud2Iterator<uint16_t> iter_rotation_segment, iter_azimuth, iter_firing_bin, iter_ring;
-  sensor_msgs::PointCloud2Iterator<uint8_t>   iter_intensity, iter_laser_id, iter_first_ret, iter_last_ret;
+  sensor_msgs::PointCloud2Iterator<uint8_t>   iter_intensity, iter_laser_id, iter_first_ret, iter_ret_type;
 
 
 };
