@@ -19,7 +19,7 @@ namespace velodyne_packet_pointcloud
                        const unsigned int num_lasers, // determines the width of the cloud
                        const unsigned int points_per_packet) :
             DataContainerBase(max_range, min_range, target_frame, fixed_frame,
-                              num_lasers, 0, false, points_per_packet, 13,
+                              num_lasers, 0, false, points_per_packet, 14,
                               "x", 1, sensor_msgs::PointField::FLOAT32,
                               "y", 1, sensor_msgs::PointField::FLOAT32,
                               "z", 1, sensor_msgs::PointField::FLOAT32,
@@ -32,7 +32,9 @@ namespace velodyne_packet_pointcloud
                               "ring", 1, sensor_msgs::PointField::UINT16,
                               "intensity", 1, sensor_msgs::PointField::UINT8,
                               "laser_id", 1, sensor_msgs::PointField::UINT8,
-                              "first_return_flag", 1, sensor_msgs::PointField::UINT8),
+                              "first_return_flag", 1, sensor_msgs::PointField::UINT8,
+                              "last_return_flag", 1, sensor_msgs::PointField::UINT8
+                              ),
             iter_x(*cloud, "x"),
             iter_y(*cloud, "y"),
             iter_z(*cloud, "z"),
@@ -46,6 +48,7 @@ namespace velodyne_packet_pointcloud
             iter_intensity(*cloud, "intensity"),
             iter_laser_id(*cloud, "laser_id"),
             iter_first_ret(*cloud, "first_return_flag"),
+            iter_last_ret(*cloud, "last_return_flag"),
             raw_data_ptr_(std::make_shared<velodyne_rawdata::RawData>())
     {
         this->sensor_frame = sensor_frame;
@@ -214,7 +217,8 @@ namespace velodyne_packet_pointcloud
     Unpacker::addPoint(float x, float y, float z, const uint16_t ring, const uint16_t azimuth, const float distance,
                        const float intensity, const float time, const uint32_t sub_segment,
                        const uint16_t rotation_segment, const uint16_t firing_bin, const uint8_t laser_id,
-                       const uint8_t first_return_flag)
+                       const uint8_t first_return_flag, const uint8_t last_return_flag
+                       )
     {
 
         const uint64_t offset = cloud->height;
@@ -237,6 +241,7 @@ namespace velodyne_packet_pointcloud
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
             *(iter_first_ret + offset) = first_return_flag;
+            *(iter_last_ret + offset) = last_return_flag;
         }
         else
         {
@@ -254,6 +259,7 @@ namespace velodyne_packet_pointcloud
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
             *(iter_first_ret + offset) = first_return_flag;
+            *(iter_last_ret + offset) = last_return_flag;
 
 
         }
@@ -266,7 +272,8 @@ namespace velodyne_packet_pointcloud
                                             const float distance, const float intensity, const float time,
                                             const uint32_t sub_segment, const uint16_t rotation_segment,
                                             const uint16_t firing_bin, const uint8_t laser_id,
-                                            const uint8_t first_return_flag, const uint8_t drop,
+                                            const uint8_t first_return_flag, const uint8_t last_return_flag,
+                                            const uint8_t drop,
                                             const uint8_t retro_shadow, const uint8_t range_limited,
                                             const uint8_t retro_ghost, const uint8_t interference,
                                             const uint8_t sun_lvl, const uint8_t confidence)
@@ -283,7 +290,7 @@ namespace velodyne_packet_pointcloud
                                  "Recived packet with dual confidence return mode, but configured point cloud is EXTENDED,"
                                  "Use EXTENDEDCONF to get the confidence information in the cloud");
         addPoint(x, y, z, ring, azimuth, distance, intensity, time, sub_segment, rotation_segment, firing_bin, laser_id,
-                 first_return_flag);
+                 first_return_flag, last_return_flag);
     }
 
 

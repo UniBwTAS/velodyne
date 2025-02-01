@@ -61,12 +61,12 @@ inline float SQR(float val) { return val*val; }
     config_.tmp_min_angle = view_direction + view_width/2;
     config_.tmp_max_angle = view_direction - view_width/2;
 
-    //computing positive modulo to keep theses angles into [0;2*M_PI]
+    //computing positive modulo to keep these angles into [0;2*M_PI]
     config_.tmp_min_angle = fmod(fmod(config_.tmp_min_angle,2*M_PI) + 2*M_PI,2*M_PI);
     config_.tmp_max_angle = fmod(fmod(config_.tmp_max_angle,2*M_PI) + 2*M_PI,2*M_PI);
 
     //converting into the hardware velodyne ref (negative yaml and degrees)
-    //adding 0.5 perfomrs a centered double to int conversion
+    //adding 0.5 performs a centered double to int conversion
     config_.min_angle = 100 * (2*M_PI - config_.tmp_min_angle) * 180 / M_PI + 0.5;
     config_.max_angle = 100 * (2*M_PI - config_.tmp_max_angle) * 180 / M_PI + 0.5;
 
@@ -730,6 +730,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                       firing_seq_in_scan,
                       laser_number,
                       1,
+                      1,
                       point_time,
                       data_container);
           }
@@ -777,7 +778,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
 
               // Is not necessary to Calculate difference between current and next block's azimuth angle.
               // as all blocks in dual return have the same azimuth.
-              // The difference with the previous packet azimuth is used as a estimate
+              // The difference with the previous packet azimuth is used as an estimate
               // of the difference of the azimuth of this packet and the next one (constant rpm)
               // first time this node is used the difference is simply 0.
 
@@ -830,12 +831,22 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                       }
                   }
 
+                  // Calculate the distance to both points to find the last return or see if there was only one return
+                  union two_bytes tmp;
+
+                  // distance extraction
+                  tmp.bytes[0] = first_ret_block.data[k];
+                  tmp.bytes[1] = first_ret_block.data[k + 1];
+                  const float distance_first_return = tmp.uint * VLS128_DISTANCE_RESOLUTION;
+                  tmp.bytes[0] = second_ret_block.data[k];
+                  tmp.bytes[1] = second_ret_block.data[k + 1];
+                  const float distance_second_return = tmp.uint * VLS128_DISTANCE_RESOLUTION;
+
+                  const uint8_t first_ret_is_last = distance_first_return>=distance_second_return?1:0;
+
                   // check if first and second block are the same for this position,
                   // which means no second return was detected
-                  bool add_invalid = false;
-                  if (!std::memcmp(first_ret_block.data + k, second_ret_block.data + k, 2)) {
-                      add_invalid = true;
-                  }
+                  const bool add_invalid = distance_first_return==distance_second_return;
 
                   if(current_return_mode == VLS128_RETURN_MODE_DUAL) {
                       calculate_and_add_point_to_container(
@@ -848,9 +859,9 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               firing_seq_in_scan,
                               laser_number,
                               1,
+                              first_ret_is_last,
                               point_time,
                               data_container);
-
 
                       calculate_and_add_point_to_container(
                               second_ret_block,
@@ -862,9 +873,11 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               firing_seq_in_scan,
                               laser_number,
                               0,
+                              first_ret_is_last ^ 1,
                               point_time,
                               data_container,
                               add_invalid);
+
                   }
                   else
                   { // Return mode has confidence
@@ -889,6 +902,7 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               firing_seq_in_scan,
                               laser_number,
                               1,
+                              first_ret_is_last,
                               point_time,
                               data_container);
 
@@ -903,9 +917,11 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               firing_seq_in_scan,
                               laser_number,
                               0,
+                              first_ret_is_last ^ 1,
                               point_time,
                               data_container,
                               add_invalid);
+
                   }
               }
           }

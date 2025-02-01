@@ -294,6 +294,7 @@ private:
                                                      const uint16_t &firing_seq_in_scan,
                                                      const uint8_t &laser_number,
                                                      const uint8_t &first_return_flag,
+                                                     const uint8_t &last_return_flag,
                                                      const float time,
                                                      DataContainerBase &data_container,
                                                      const bool add_invalid = false) {
@@ -341,7 +342,9 @@ private:
                                     rotation_segment,
                                     firing_seq_in_scan,
                                     laser_number,
-                                    first_return_flag);
+                                    first_return_flag,
+                                    last_return_flag
+                                    );
         } else {
             // point is outside the valid angle range
 
@@ -358,7 +361,9 @@ private:
                                     rotation_segment,
                                     firing_seq_in_scan,
                                     laser_number,
-                                    first_return_flag);
+                                    first_return_flag,
+                                    last_return_flag
+                                    );
         }
     }
 
@@ -372,6 +377,7 @@ private:
                                                      const uint16_t &firing_seq_in_scan,
                                                      const uint8_t &laser_number,
                                                      const uint8_t &first_return_flag,
+                                                     const uint8_t &last_return_flag,
                                                      const float time,
                                                      DataContainerBase &data_container,
                                                      const bool add_invalid = false) {
@@ -508,6 +514,7 @@ private:
                                                     firing_seq_in_scan,
                                                     laser_number,
                                                     first_return_flag,
+                                                    last_return_flag,
                                                     drop,
                                                     retro_shadow,
                                                     range_limited,
@@ -532,6 +539,7 @@ private:
                                                     firing_seq_in_scan,
                                                     laser_number,
                                                     first_return_flag,
+                                                    last_return_flag,
                                                     255,
                                                     255,
                                                     255,

@@ -147,13 +147,15 @@ public:
                        const uint16_t  rotation_segment,
                        const uint16_t  firing_bin,
                        const uint8_t laser_id,
-                       const uint8_t first_return_flag)
+                       const uint8_t first_return_flag,
+                        const uint8_t last_return_flag)
   {
       (void)sub_segment;
       (void)rotation_segment;
       (void)firing_bin;
       (void)laser_id;
       (void)first_return_flag;
+      (void)last_return_flag;
     addPoint(x, y, z, ring, azimuth, distance, intensity, time);
   }
 
@@ -165,6 +167,7 @@ public:
                                        const uint16_t firing_bin,
                                        const uint8_t laser_id,
                                        const uint8_t first_return_flag,
+                                       const uint8_t last_return_flag,
                                        const uint8_t drop,
                                        const uint8_t retro_shadow,
                                        const uint8_t range_limited,
@@ -178,6 +181,7 @@ public:
       (void)firing_bin;
       (void)laser_id;
       (void)first_return_flag;
+      (void)last_return_flag;
       (void)drop;
       (void)retro_shadow;
       (void)range_limited;
