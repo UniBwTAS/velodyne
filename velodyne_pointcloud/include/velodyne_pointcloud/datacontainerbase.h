@@ -37,6 +37,7 @@
 #include <velodyne_msgs/VelodyneScan.h>
 #include <velodyne_msgs/VelodyneReturnMode.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
+#include <velodyne_pointcloud/return_types_flags.h>
 #include <Eigen/Dense>
 #include <memory>
 #include <string>
@@ -147,15 +148,13 @@ public:
                        const uint16_t  rotation_segment,
                        const uint16_t  firing_bin,
                        const uint8_t laser_id,
-                       const uint8_t first_return_flag,
-                        const uint8_t last_return_flag)
+                       const uint8_t return_type)
   {
       (void)sub_segment;
       (void)rotation_segment;
       (void)firing_bin;
       (void)laser_id;
-      (void)first_return_flag;
-      (void)last_return_flag;
+      (void)return_type;
     addPoint(x, y, z, ring, azimuth, distance, intensity, time);
   }
 
@@ -166,8 +165,7 @@ public:
                                        const uint16_t rotation_segment,
                                        const uint16_t firing_bin,
                                        const uint8_t laser_id,
-                                       const uint8_t first_return_flag,
-                                       const uint8_t last_return_flag,
+                                       const uint8_t return_type,
                                        const uint8_t drop,
                                        const uint8_t retro_shadow,
                                        const uint8_t range_limited,
@@ -180,8 +178,7 @@ public:
       (void)rotation_segment;
       (void)firing_bin;
       (void)laser_id;
-      (void)first_return_flag;
-      (void)last_return_flag;
+      (void)return_type;
       (void)drop;
       (void)retro_shadow;
       (void)range_limited;

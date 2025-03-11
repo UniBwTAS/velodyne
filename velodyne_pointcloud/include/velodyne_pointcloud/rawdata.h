@@ -54,6 +54,7 @@
 #include <velodyne_msgs/VelodyneScan.h>
 #include <velodyne_pointcloud/calibration.h>
 #include <velodyne_pointcloud/datacontainerbase.h>
+#include <velodyne_pointcloud/return_types_flags.h>
 
 namespace velodyne_rawdata
 {
@@ -145,19 +146,6 @@ static const int VLS128_RETURN_MODE_DUAL_CONF= 59;
 static const int VLS128_RETURN_MODE_POSITION= 1204;
 static const int VLS128_MODEL_ID_POSITION= 1205;
 
-// per point return type 3 Bits first return flag(strongest), is last flag(last), is unique return flag
-static const uint8_t VLS128_RETURN_TYPE_STRONGEST= 4;
-static const uint8_t VLS128_RETURN_TYPE_LAST= 2;
-static const uint8_t VLS128_RETURN_TYPE_STRONGEST_LAST= 6;
-static const uint8_t VLS128_RETURN_TYPE_SECOND_STRONGEST= 0;
-static const uint8_t VLS128_RETURN_TYPE_STRONGEST_LAST_UNIQUE= 7;
-
-static const uint8_t VLS128_RT_S = VLS128_RETURN_TYPE_STRONGEST;
-static const uint8_t VLS128_RT_L = VLS128_RETURN_TYPE_LAST;
-static const uint8_t VLS128_RT_SL = VLS128_RETURN_TYPE_STRONGEST_LAST;
-static const uint8_t VLS128_RT_SS = VLS128_RETURN_TYPE_SECOND_STRONGEST;
-static const uint8_t VLS128_RT_SLU = VLS128_RETURN_TYPE_STRONGEST_LAST_UNIQUE;
-
 
 static const float  PACKET_RATE_SINGLE_RET_MODE  = 6030.5;
 static const float  PACKET_RATE_DUAL_RET_MODE  = 18091.36;
@@ -242,6 +230,8 @@ public:
 
   std::string get_sensor_model(){return config_.model;}
 
+
+
 private:
   /** configuration parameters */
   typedef struct
@@ -307,7 +297,6 @@ private:
                                                      const std::uint16_t &rotation_segment,
                                                      const uint16_t &firing_seq_in_scan,
                                                      const uint8_t &laser_number,
-                                                     const uint8_t &first_return_flag,
                                                      const uint8_t &return_type,
                                                      const float time,
                                                      DataContainerBase &data_container,
@@ -356,7 +345,6 @@ private:
                                     rotation_segment,
                                     firing_seq_in_scan,
                                     laser_number,
-                                    first_return_flag,
                                     return_type
                                     );
         } else {
@@ -375,7 +363,6 @@ private:
                                     rotation_segment,
                                     firing_seq_in_scan,
                                     laser_number,
-                                    first_return_flag,
                                     return_type
                                     );
         }
@@ -390,7 +377,6 @@ private:
                                                      const std::uint16_t &rotation_segment,
                                                      const uint16_t &firing_seq_in_scan,
                                                      const uint8_t &laser_number,
-                                                     const uint8_t &first_return_flag,
                                                      const uint8_t &return_type,
                                                      const float time,
                                                      DataContainerBase &data_container,
@@ -442,7 +428,7 @@ private:
             uint8_t  sun = 0;
             uint8_t  confidence = 0;
 
-            if(first_return_flag)
+            if(is_flag_set(return_type,FIRST_RETURN_FLAG))
             {
                 // get info for first return
                 //drop
@@ -527,7 +513,6 @@ private:
                                                     rotation_segment,
                                                     firing_seq_in_scan,
                                                     laser_number,
-                                                    first_return_flag,
                                                     return_type,
                                                     drop,
                                                     retro_shadow,
@@ -552,7 +537,6 @@ private:
                                                     rotation_segment,
                                                     firing_seq_in_scan,
                                                     laser_number,
-                                                    first_return_flag,
                                                     return_type,
                                                     255,
                                                     255,

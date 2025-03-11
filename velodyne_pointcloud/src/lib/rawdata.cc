@@ -729,7 +729,6 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                       rotation_segment,
                       firing_seq_in_scan,
                       laser_number,
-                      1,
                       1*4+1*2+1,
                       point_time,
                       data_container);
@@ -858,7 +857,6 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               rotation_segment,
                               firing_seq_in_scan,
                               laser_number,
-                              1,
                               1*4+first_ret_is_last*2+add_invalid,
                               point_time,
                               data_container);
@@ -872,7 +870,6 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               rotation_segment,
                               firing_seq_in_scan,
                               laser_number,
-                              0,
                               0*4+(!first_ret_is_last) *2+add_invalid,
                               point_time,
                               data_container,
@@ -901,7 +898,6 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               rotation_segment,
                               firing_seq_in_scan,
                               laser_number,
-                              1,
                               1*4+first_ret_is_last*2+add_invalid,
                               point_time,
                               data_container);
@@ -916,7 +912,6 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
                               rotation_segment,
                               firing_seq_in_scan,
                               laser_number,
-                              0,
                               0*4+(!first_ret_is_last) * 2 + add_invalid,
                               point_time,
                               data_container,

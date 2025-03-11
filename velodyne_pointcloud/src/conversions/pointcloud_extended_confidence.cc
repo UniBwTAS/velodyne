@@ -12,7 +12,7 @@ namespace velodyne_pointcloud {
                                                                const unsigned int points_per_packet)
                                                                : DataContainerBase(
             max_range, min_range, target_frame, fixed_frame,
-            num_lasers, 0, false, points_per_packet, 21,
+            num_lasers, 0, false, points_per_packet, 20,
             "x", 1, sensor_msgs::PointField::FLOAT32,
             "y", 1, sensor_msgs::PointField::FLOAT32,
             "z", 1, sensor_msgs::PointField::FLOAT32,
@@ -25,7 +25,6 @@ namespace velodyne_pointcloud {
             "ring", 1, sensor_msgs::PointField::UINT16,
             "intensity", 1, sensor_msgs::PointField::UINT8,
             "laser_id", 1, sensor_msgs::PointField::UINT8,
-            "first_return_flag", 1, sensor_msgs::PointField::UINT8,
             "return_type", 1, sensor_msgs::PointField::UINT8,
             "drop", 1, sensor_msgs::PointField::UINT8,
             "retro_shadow", 1, sensor_msgs::PointField::UINT8,
@@ -45,7 +44,6 @@ namespace velodyne_pointcloud {
           iter_ring(*cloud,"ring"),
           iter_intensity(*cloud,"intensity"),
           iter_laser_id(*cloud,"laser_id"),
-          iter_first_ret(*cloud,"first_return_flag"),
           iter_ret_type(*cloud,"return_type"),
           iter_drop(*cloud,"drop"),
           iter_retro_shadow(*cloud,"retro_shadow"),
@@ -72,7 +70,6 @@ namespace velodyne_pointcloud {
         iter_ring = sensor_msgs::PointCloud2Iterator<uint16_t>(*cloud,"ring");
         iter_intensity = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"intensity");
         iter_laser_id = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"laser_id");
-        iter_first_ret = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"first_return_flag");
         iter_ret_type = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"return_type");
         iter_drop = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"drop");
         iter_retro_shadow = sensor_msgs::PointCloud2Iterator<uint8_t>(*cloud,"retro_shadow");
@@ -111,7 +108,6 @@ namespace velodyne_pointcloud {
             *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = 0;
-            *(iter_first_ret + offset) = 0;
             *(iter_drop + offset) = 255;
             *(iter_retro_shadow + offset) = 255;
             *(iter_range_limited + offset) = 255;
@@ -132,7 +128,6 @@ namespace velodyne_pointcloud {
             *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = 0;
-            *(iter_first_ret + offset) = 0;
             *(iter_drop + offset) = 255;
             *(iter_retro_shadow + offset) = 255;
             *(iter_range_limited + offset) = 255;
@@ -147,9 +142,10 @@ namespace velodyne_pointcloud {
                                       const uint16_t azimuth, const float distance,
                                       const float intensity, const float time,
                                       const uint32_t sub_segment, const uint16_t  rotation_segment,
-                                      const uint16_t  firing_bin, const uint8_t laser_id, const uint8_t first_return_flag, const uint8_t return_type)
+                                      const uint16_t  firing_bin, const uint8_t laser_id, const uint8_t return_type)
     {
         ROS_WARN_STREAM_THROTTLE(60, "Extended point cloud with CONFIDENCE (EXTENDEDCONF) is configured but received another type of return.");
+        const auto first_return_flag = velodyne_rawdata::is_flag_set(return_type,velodyne_rawdata::FIRST_RETURN_FLAG)?1:0;
         const uint64_t  off_sec_ret =
                 (1-first_return_flag) * (packets_in_scan * config_.points_per_packet/2);
         const uint64_t  off_first_ret = ring + rotation_segment * config_.init_width;
@@ -171,7 +167,6 @@ namespace velodyne_pointcloud {
             *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
-            *(iter_first_ret + offset) = first_return_flag;
             *(iter_ret_type + offset) = return_type;
             *(iter_drop + offset) = 255;
             *(iter_retro_shadow + offset) = 255;
@@ -194,7 +189,6 @@ namespace velodyne_pointcloud {
             *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
-            *(iter_first_ret + offset) = first_return_flag;
             *(iter_ret_type + offset) = return_type;
             *(iter_drop + offset) = 255;
             *(iter_retro_shadow + offset) = 255;
@@ -212,7 +206,6 @@ namespace velodyne_pointcloud {
                                                                 const uint32_t sub_segment,
                                                                 const uint16_t rotation_segment,
                                                                 const uint16_t firing_bin, const uint8_t laser_id,
-                                                                const uint8_t first_return_flag,
                                                                 const uint8_t return_type,
                                                                 const uint8_t drop,
                                                                 const uint8_t retro_shadow,
@@ -222,7 +215,7 @@ namespace velodyne_pointcloud {
                                                                 const uint8_t sun_lvl,
                                                                 const uint8_t confidence)
     {
-
+        const auto first_return_flag = velodyne_rawdata::is_flag_set(return_type,velodyne_rawdata::FIRST_RETURN_FLAG)?1:0;
         const uint64_t  off_sec_ret =
                 (1-first_return_flag) * (packets_in_scan * config_.points_per_packet/2);
         const uint64_t  off_first_ret = ring + rotation_segment * config_.init_width;
@@ -244,7 +237,6 @@ namespace velodyne_pointcloud {
             *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
-            *(iter_first_ret + offset) = first_return_flag;
             *(iter_ret_type + offset) = return_type;
             *(iter_drop + offset) = drop;
             *(iter_retro_shadow + offset) = retro_shadow;
@@ -267,7 +259,6 @@ namespace velodyne_pointcloud {
             *(iter_intensity + offset) = static_cast<uint8_t>(intensity);
             *(iter_ring + offset) = ring;
             *(iter_laser_id + offset) = laser_id;
-            *(iter_first_ret + offset) = first_return_flag;
             *(iter_ret_type + offset) = return_type;
             *(iter_drop + offset) = 255;
             *(iter_retro_shadow + offset) = 255;
