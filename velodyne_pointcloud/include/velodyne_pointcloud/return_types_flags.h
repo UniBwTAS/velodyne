@@ -22,9 +22,9 @@ namespace velodyne_rawdata
     static const uint8_t VLS128_RT_SS = VLS128_RETURN_TYPE_SECOND_STRONGEST;
     static const uint8_t VLS128_RT_SLU = VLS128_RETURN_TYPE_STRONGEST_LAST_UNIQUE;
 
-    constexpr uint8_t FIRST_RETURN_FLAG = (1 << 0);  // Bit 0
+    constexpr uint8_t FIRST_RETURN_FLAG = (1 << 2);  // Bit 2
     constexpr uint8_t LAST_RETURN_FLAG = (1 << 1);  // Bit 1
-    constexpr uint8_t UNIQUE_RETURN_FLAG = (1 << 2);  // Bit 2
+    constexpr uint8_t UNIQUE_RETURN_FLAG = (1 << 0);  // Bit 0
 
     inline bool is_flag_set(const uint8_t value, const uint8_t flag)
     {
